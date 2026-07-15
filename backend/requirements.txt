@@ -9,3 +9,6 @@ psycopg[binary]==3.2.9
 alembic==1.16.4
 # Reads settings (like DATABASE_URL) from environment variables, with validation
 pydantic-settings==2.10.1
+# Lets SQLAlchemy understand pgvector's "vector" column type (semantic search)
+pgvector==0.4.1
+
