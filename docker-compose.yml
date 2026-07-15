@@ -1,0 +1,68 @@
+# The "tray" that runs all three parts of KitchenLab together.
+# Start everything with:  docker compose up
+services:
+
+  # ---------- The pantry: PostgreSQL database ----------
+  db:
+    # pgvector/pgvector is the official Postgres image with the pgvector
+    # extension pre-installed (we need it later for semantic search).
+    image: pgvector/pgvector:pg16
+    environment:
+      # These env vars tell Postgres what user/password/database to create
+      # on first boot. Fine for local dev; in AWS these become secrets.
+      POSTGRES_USER: kitchenlab
+      POSTGRES_PASSWORD: kitchenlab_dev
+      POSTGRES_DB: kitchenlab
+    ports:
+      # host:container -> lets tools on your Mac reach the DB at localhost:5432
+      - "5432:5432"
+    volumes:
+      # A named volume so the pantry's contents survive container restarts.
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      # Compose pings the DB until it's ready, so the backend doesn't
+      # start before the pantry doors are open.
+      test: ["CMD-SHELL", "pg_isready -U kitchenlab"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # ---------- The kitchen: FastAPI backend ----------
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Inside the compose network, containers reach each other by service
+      # name -- so the host is "db", not "localhost".
+      DATABASE_URL: postgresql+psycopg://kitchenlab:kitchenlab_dev@db:5432/kitchenlab
+    volumes:
+      # Mount the source code so edits on your Mac reload instantly
+      # inside the container (no rebuild needed during development).
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ---------- The dining room: Next.js frontend ----------
+  frontend:
+    build: ./frontend
+    ports:
+      # Host port 3001 (3000 was taken by another project on this Mac)
+      # maps to port 3000 inside the container.
+      - "3001:3000"
+    environment:
+      # The browser calls the backend via your Mac's localhost:8000.
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      # Keep node_modules inside the container (the Mac's copy would
+      # conflict -- different OS, different binaries).
+      - /app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev
+
+volumes:
+  db_data:

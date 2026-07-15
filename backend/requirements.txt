@@ -1,0 +1,11 @@
+# Web framework: turns Python functions into HTTP endpoints
+fastapi==0.116.1
+# The server that actually runs FastAPI (FastAPI is the recipe, uvicorn is the stove)
+uvicorn[standard]==0.35.0
+# Talks to Postgres from Python: SQLAlchemy is the ORM, psycopg is the driver
+sqlalchemy==2.0.41
+psycopg[binary]==3.2.9
+# Database migrations: version control for the shape of your database
+alembic==1.16.4
+# Reads settings (like DATABASE_URL) from environment variables, with validation
+pydantic-settings==2.10.1
