@@ -15,5 +15,11 @@ class Settings(BaseSettings):
 
     app_name: str = "KitchenLab"
 
+    # Signs JWTs. The dev fallback below is fine locally; in production this
+    # MUST come from the SECRET_KEY env var (a long random string) -- anyone
+    # who knows it can forge login tokens.
+    secret_key: str = "dev-only-secret-change-in-production"
+    access_token_expire_minutes: int = 60 * 24 * 7  # one week
+
 
 settings = Settings()

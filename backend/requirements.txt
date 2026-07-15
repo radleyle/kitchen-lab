@@ -11,4 +11,12 @@ alembic==1.16.4
 pydantic-settings==2.10.1
 # Lets SQLAlchemy understand pgvector's "vector" column type (semantic search)
 pgvector==0.4.1
+# Password hashing (slow on purpose, salted per user)
+bcrypt==4.3.0
+# Create and verify JWTs (signed "wristband" tokens)
+pyjwt==2.10.1
+# Powers Pydantic's EmailStr validation
+email-validator==2.2.0
+
+
 
