@@ -12,12 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.routers import auth, calculators
+from app.routers import auth, calculators, safety
 
 app = FastAPI(title=settings.app_name)
 
 app.include_router(auth.router)
 app.include_router(calculators.router)
+app.include_router(safety.router)
 
 # CORS = browser security rule. By default a page served from localhost:3000
 # (our frontend) is NOT allowed to call an API on localhost:8000 (a different
