@@ -12,7 +12,16 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.routers import agent, assistant, auth, calculators, diagnose, knowledge, safety
+from app.routers import (
+    agent,
+    assistant,
+    auth,
+    calculators,
+    diagnose,
+    knowledge,
+    recipes,
+    safety,
+)
 
 app = FastAPI(title=settings.app_name)
 
@@ -22,6 +31,7 @@ app.include_router(auth.router)
 app.include_router(calculators.router)
 app.include_router(diagnose.router)
 app.include_router(knowledge.router)
+app.include_router(recipes.router)
 app.include_router(safety.router)
 
 # CORS = browser security rule. By default a page served from localhost:3000

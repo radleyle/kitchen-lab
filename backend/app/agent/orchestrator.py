@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.agent.intent import classify
 from app.diagnosis.engine import start_diagnosis
 from app.llm.answer import answer_question
+from app.recipes.generator import adapt_recipe, generate_recipe
 
 
 def handle_learn(db: Session, message: str, intent: dict) -> dict:
@@ -36,8 +37,30 @@ def handle_diagnose(db: Session, message: str, intent: dict) -> dict:
     return result
 
 
+def handle_cook(db: Session, message: str, intent: dict) -> dict:
+    result = generate_recipe(db, message)
+    if not result.get("feasible"):
+        # Not actually a recipe request -> honest grounded answer instead.
+        result = answer_question(db, message)
+        result["handler"] = "grounded_answer (not a recipe request)"
+        return result
+    result["handler"] = "recipe_generator"
+    return result
+
+
+def handle_adapt(db: Session, message: str, intent: dict) -> dict:
+    # Adapt messages usually carry the pasted recipe in the message itself.
+    result = adapt_recipe(db, message)
+    if not result.get("feasible"):
+        result = answer_question(db, message)
+        result["handler"] = "grounded_answer (no recipe text found)"
+        return result
+    result["handler"] = "recipe_adapter"
+    return result
+
+
 def handle_fallback(db: Session, message: str, intent: dict) -> dict:
-    # cook / adapt / substitute / experiment engines are not built yet;
+    # substitute / experiment engines are not built yet;
     # a grounded, cited answer is the honest interim behavior.
     result = answer_question(db, message)
     result["handler"] = "grounded_answer (fallback; dedicated engine coming)"
@@ -47,8 +70,8 @@ def handle_fallback(db: Session, message: str, intent: dict) -> dict:
 HANDLERS: dict[str, Callable[[Session, str, dict], dict]] = {
     "learn": handle_learn,
     "diagnose": handle_diagnose,
-    "cook": handle_fallback,
-    "adapt": handle_fallback,
+    "cook": handle_cook,
+    "adapt": handle_adapt,
     "substitute": handle_fallback,
     "experiment": handle_fallback,
 }
