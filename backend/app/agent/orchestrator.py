@@ -13,6 +13,7 @@ from collections.abc import Callable
 from sqlalchemy.orm import Session
 
 from app.agent.intent import classify
+from app.diagnosis.engine import start_diagnosis
 from app.llm.answer import answer_question
 
 
@@ -23,10 +24,15 @@ def handle_learn(db: Session, message: str, intent: dict) -> dict:
 
 
 def handle_diagnose(db: Session, message: str, intent: dict) -> dict:
-    # Interim: grounded answer. The structured diagnosis engine (cause
-    # ranking + follow-up questions) replaces this entry when built.
-    result = answer_question(db, message)
-    result["handler"] = "grounded_answer (diagnosis engine coming)"
+    # Round 1 of the structured flow: symptom match + prior-ranked causes
+    # + follow-up questions. Round 2 happens via POST /diagnose/conclude.
+    result = start_diagnosis(db, message)
+    if not result.get("matched"):
+        # Symptom not in the taxonomy yet -> honest grounded answer instead.
+        result = answer_question(db, message)
+        result["handler"] = "grounded_answer (no taxonomy match)"
+        return result
+    result["handler"] = "diagnosis_engine"
     return result
 
 
