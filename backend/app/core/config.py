@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # From the OPENAI_API_KEY env var (never committed to git).
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
+    chat_model: str = "gpt-4o-mini"
 
 
 settings = Settings()

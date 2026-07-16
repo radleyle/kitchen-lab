@@ -81,6 +81,44 @@ SOURCES = {
         "published_at": date(2022, 1, 1),
         "reviewed_at": date(2026, 7, 16),
     },
+    # Chef Fatty: one source record per article, so citations link to the
+    # exact page. Authority level "culinary" -- tested practice, not a lab.
+    "cf_velveting": {
+        "title": "Velveting: Why Your Stir-Fry Chicken Is Always Dry (And the Two-Ingredient Fix)",
+        "author": "Chef Fatty",
+        "url": "https://www.cheffatty.com/science/why-chicken-gets-dry-stir-fry",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2026, 4, 29),
+        "reviewed_at": date(2026, 7, 16),
+    },
+    "cf_shrimp": {
+        "title": "Why Your Shrimp Is Always Rubbery (And How to Fix It for Good)",
+        "author": "Chef Fatty",
+        "url": "https://www.cheffatty.com/science/why-your-shrimp-is-always-rubbery",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2026, 5, 13),
+        "reviewed_at": date(2026, 7, 16),
+    },
+    "cf_vinaigrette": {
+        "title": "The Science of the Perfect Vinaigrette (And 4 Recipes That Prove It)",
+        "author": "Chef Fatty",
+        "url": "https://www.cheffatty.com/science/science-of-the-perfect-vinaigrette",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2026, 6, 8),
+        "reviewed_at": date(2026, 7, 16),
+    },
+    "pork_study": {
+        "title": "Internal Endpoint Cooking Temperature Alters Quality and Consumer Acceptability of Pork Loin Chops (Foods, 2025)",
+        "author": "MDPI Foods 14(12):2052",
+        "url": "https://www.mdpi.com/2304-8158/14/12/2052",
+        "source_type": "paper",
+        "authority_level": "science",
+        "published_at": date(2025, 6, 1),
+        "reviewed_at": date(2026, 7, 16),
+    },
 }
 
 # (source_key, claim, content, scope, confidence)
@@ -425,6 +463,66 @@ PASSAGES = [
      "volume -- the reason home bakers use dutch ovens to trap steam.",
      "Lean crusty breads; enriched soft breads don't want it.",
      "medium"),
+    # ================= CHEF FATTY + RELATED (added July 2026) =================
+    ("cf_velveting",
+     "Velveting dosage: about 1/4 tsp baking soda per pound of chicken, 15-20 minute rest, then rinse.",
+     "For 450 g (1 lb) of thin-sliced chicken, toss with roughly 1/4 tsp baking "
+     "soda and rest 15-20 minutes (up to 1 hour refrigerated). Rinse thoroughly "
+     "under cold water and pat dry -- skipping the rinse leaves a metallic, "
+     "soapy taste. The tenderizing has already happened by then; rinsing does "
+     "not undo it. Coat with cornstarch and seasoning only after drying.",
+     "Thin-sliced chicken for stir-frying; quantities scale linearly.",
+     "medium"),
+    ("cf_velveting",
+     "Velveting transfers to beef, pork, and shrimp with adjusted dosage.",
+     "The baking-soda-then-cornstarch sequence works on beef, pork, and shrimp. "
+     "Shrimp protein is more delicate: use about half the baking soda (1/8 tsp "
+     "per pound) and a shorter 10-15 minute rest, or the texture goes mushy "
+     "instead of plump.",
+     "Thin-cut or small pieces destined for hot, fast cooking.",
+     "medium"),
+    ("cf_shrimp",
+     "Shrimp overcooks far below the color change: proteins set around 120F, pink appears around 140F.",
+     "Shrimp proteins begin setting near 120F (49C), and texture stiffens "
+     "steadily from there -- but the pink 'done' color only appears around "
+     "140F (60C). Waiting for full pink means the shrimp has already tightened "
+     "well past its best texture. Color is a lagging indicator; use shape or a "
+     "thermometer instead. The FDA-safe endpoint for shellfish is 145F (62.8C), "
+     "so moisture-protecting technique (brief high heat, starch coating) "
+     "matters more for shrimp than almost any other protein.",
+     "Shrimp cooked by any dry or wet heat; safe endpoint per FDA/USDA is 145F.",
+     "medium"),
+    ("cf_shrimp",
+     "Shrimp shape signals doneness in real time: pull at a J-curve; a tight C is overcooked.",
+     "Raw shrimp holds a gentle open curve. As proteins contract during "
+     "cooking, the curve tightens: a relaxed J shape indicates just-set "
+     "proteins with moisture intact -- the moment to pull -- while a tight C "
+     "shape means the shrimp has fully contracted and squeezed out its juices. "
+     "The J-to-C transition happens in seconds, faster than color changes.",
+     "Whole shrimp cooked in shell or peeled; visual cue, not a safety check.",
+     "medium"),
+    ("cf_vinaigrette",
+     "A stable vinaigrette follows roughly 9:3:1 -- oil : acid : emulsifier.",
+     "One part concentrated emulsifier can hold about nine parts oil and three "
+     "parts acid in a stable emulsion. Dijon mustard is the classic emulsifier "
+     "because mustard-seed mucilage (a sticky polysaccharide) plus seed "
+     "proteins coat oil droplets efficiently at small doses; whole-grain "
+     "mustard, egg yolk, tahini, miso, or roasted garlic puree fill the same "
+     "role with different flavors. Without an emulsifier, oil and vinegar "
+     "separate within minutes and dress the salad unevenly.",
+     "Vinaigrettes and cold emulsified dressings; ratio is a starting point to adjust by taste.",
+     "medium"),
+    ("pork_study",
+     "Pork chops cooked to 63C (145F) measurably beat higher endpoints on juiciness and tenderness.",
+     "In a controlled study of 264 pork loin chops cooked to 63C, 71C, or 79C, "
+     "the 63C chops retained more moisture, had lower shear force (more "
+     "tender), and won consumer panel ratings for juiciness, texture, and "
+     "tenderness. The USDA lowered its whole-cut pork recommendation from "
+     "160F to 145F (63C) plus a 3-minute rest in 2011; cooking pork to the "
+     "old 160F standard is a primary cause of dry chops. Pink interior at "
+     "145F is normal and safe.",
+     "Whole-muscle pork chops and loins; ground pork still requires 160F.",
+     "high"),
     ("mcgee",
      "Starch gelatinization and protein set, not browning, decide when the crumb is done.",
      "A loaf or cake is structurally done when its interior starch has "
