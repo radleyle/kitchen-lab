@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.routers import assistant, auth, calculators, knowledge, safety
+from app.routers import agent, assistant, auth, calculators, knowledge, safety
 
 app = FastAPI(title=settings.app_name)
 
+app.include_router(agent.router)
 app.include_router(assistant.router)
 app.include_router(auth.router)
 app.include_router(calculators.router)
