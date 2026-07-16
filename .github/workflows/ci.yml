@@ -20,7 +20,9 @@ jobs:
       - name: Sanity-check the app imports
         run: python -c "from app.main import app; print('backend imports OK')"
         working-directory: backend
-      # Tests will be added here as we build (pytest backend/tests)
+      - name: Run tests
+        run: pytest -v
+        working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest

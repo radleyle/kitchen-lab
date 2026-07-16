@@ -17,6 +17,9 @@ bcrypt==4.3.0
 pyjwt==2.10.1
 # Powers Pydantic's EmailStr validation
 email-validator==2.2.0
+# Test runner: finds and runs test_* functions
+pytest==8.4.1
+
 
 
 
