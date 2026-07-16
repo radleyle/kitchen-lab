@@ -36,6 +36,9 @@ services:
       # Inside the compose network, containers reach each other by service
       # name -- so the host is "db", not "localhost".
       DATABASE_URL: postgresql+psycopg://kitchenlab:kitchenlab_dev@db:5432/kitchenlab
+    # Secrets (like OPENAI_API_KEY) live in .env -- gitignored, never committed.
+    env_file:
+      - .env
     volumes:
       # Mount the source code so edits on your Mac reload instantly
       # inside the container (no rebuild needed during development).

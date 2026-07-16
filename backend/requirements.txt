@@ -19,6 +19,9 @@ pyjwt==2.10.1
 email-validator==2.2.0
 # Test runner: finds and runs test_* functions
 pytest==8.4.1
+# OpenAI client, used ONLY for embeddings + phrasing (never facts/numbers)
+openai==1.97.0
+
 
 
 

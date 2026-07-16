@@ -21,5 +21,9 @@ class Settings(BaseSettings):
     secret_key: str = "dev-only-secret-change-in-production"
     access_token_expire_minutes: int = 60 * 24 * 7  # one week
 
+    # From the OPENAI_API_KEY env var (never committed to git).
+    openai_api_key: str = ""
+    embedding_model: str = "text-embedding-3-small"
+
 
 settings = Settings()
