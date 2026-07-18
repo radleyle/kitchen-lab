@@ -18,6 +18,7 @@ from app.routers import (
     auth,
     calculators,
     diagnose,
+    kitchen,
     knowledge,
     recipes,
     safety,
@@ -31,6 +32,7 @@ app.include_router(assistant.router)
 app.include_router(auth.router)
 app.include_router(calculators.router)
 app.include_router(diagnose.router)
+app.include_router(kitchen.router)
 app.include_router(knowledge.router)
 app.include_router(recipes.router)
 app.include_router(substitute.router)

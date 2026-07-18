@@ -8,6 +8,7 @@ from the ingredient_functions table and can only answer from that list.
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.kitchen.personalize import filter_substitutions_for_diet
 from app.llm.client import complete_json
 from app.models import Ingredient, IngredientFunction, Substitution
 
@@ -93,7 +94,12 @@ def _sub_to_dict(sub: Substitution) -> dict:
     }
 
 
-def suggest_substitutes(db: Session, message: str, ingredient_query: str) -> dict:
+def suggest_substitutes(
+    db: Session,
+    message: str,
+    ingredient_query: str,
+    kitchen_snapshot: dict | None = None,
+) -> dict:
     """The full flow. Returns options for one function, or grouped options
     plus a clarifying question when the function can't be determined."""
     ingredient = _load_ingredient(db, ingredient_query)
@@ -142,8 +148,18 @@ def suggest_substitutes(db: Session, message: str, ingredient_query: str) -> dic
     if isinstance(n, int) and 1 <= n <= len(functions):
         chosen = functions[n - 1]
 
+    diet = None
+    if kitchen_snapshot and kitchen_snapshot.get("profile"):
+        diet = kitchen_snapshot["profile"].get("dietary_restrictions")
+
     if chosen is None:
         # Honest uncertainty: group by job and ask, never guess.
+        by_fn = {
+            f.name: filter_substitutions_for_diet(
+                [_sub_to_dict(s) for s in subs if s.function_id == f.id], diet
+            )
+            for f in functions
+        }
         return {
             "found": True,
             "ingredient": ingredient.name,
@@ -154,10 +170,7 @@ def suggest_substitutes(db: Session, message: str, ingredient_query: str) -> dic
                 f"What is the {ingredient.name} doing in your dish? "
                 "The right swap depends on its job."
             ),
-            "options_by_function": {
-                f.name: [_sub_to_dict(s) for s in subs if s.function_id == f.id]
-                for f in functions
-            },
+            "options_by_function": by_fn,
         }
 
     options = [s for s in subs if s.function_id == chosen.id]
@@ -168,5 +181,7 @@ def suggest_substitutes(db: Session, message: str, ingredient_query: str) -> dic
         "function": {"name": chosen.name, "description": chosen.description},
         "dish": result.get("dish"),
         "needs_clarification": False,
-        "options": [_sub_to_dict(s) for s in options],
+        "options": filter_substitutions_for_diet(
+            [_sub_to_dict(s) for s in options], diet
+        ),
     }

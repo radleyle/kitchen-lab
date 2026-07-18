@@ -3,14 +3,19 @@
 POST /recipes/generate  natural-language request -> annotated recipe
 POST /recipes/adapt     pasted recipe text -> standardized, annotated recipe
 GET  /recipes/{id}      read back a persisted recipe with its steps
+
+Optional Bearer token personalizes from the kitchen profile (oven offset,
+equipment, dietary restrictions) and owns the saved recipe.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_optional_user
 from app.core.db import get_db
-from app.models import Recipe
+from app.kitchen.context import load_kitchen_snapshot
+from app.models import Recipe, User
 from app.recipes.generator import adapt_recipe, generate_recipe
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
@@ -27,13 +32,35 @@ class AdaptRequest(BaseModel):
 
 
 @router.post("/generate")
-def generate(body: GenerateRequest, db: Session = Depends(get_db)) -> dict:
-    return generate_recipe(db, body.request, body.servings)
+def generate(
+    body: GenerateRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> dict:
+    snapshot = load_kitchen_snapshot(db, user)
+    return generate_recipe(
+        db,
+        body.request,
+        body.servings,
+        kitchen_snapshot=snapshot,
+        user_id=user.id if user else None,
+    )
 
 
 @router.post("/adapt")
-def adapt(body: AdaptRequest, db: Session = Depends(get_db)) -> dict:
-    return adapt_recipe(db, body.recipe_text, body.source_url)
+def adapt(
+    body: AdaptRequest,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+) -> dict:
+    snapshot = load_kitchen_snapshot(db, user)
+    return adapt_recipe(
+        db,
+        body.recipe_text,
+        body.source_url,
+        kitchen_snapshot=snapshot,
+        user_id=user.id if user else None,
+    )
 
 
 @router.get("/{recipe_id}")

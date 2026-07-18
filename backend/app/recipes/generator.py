@@ -21,6 +21,7 @@ from app.calculators.units import (
     convert_mass,
     volume_to_grams,
 )
+from app.kitchen.personalize import kitchen_prompt_block, personalize_recipe
 from app.llm.client import complete_json
 from app.models import Recipe, RecipeStep
 from app.rag.retrieval import search_passages
@@ -223,8 +224,14 @@ def _enforce_safety_floor(db: Session, food_query: str, steps: list[dict]) -> di
     return {"safety": rule_to_response(rule), "overrides": overrides}
 
 
-def _persist(db: Session, data: dict, source_url: str | None = None) -> int:
+def _persist(
+    db: Session,
+    data: dict,
+    source_url: str | None = None,
+    user_id: int | None = None,
+) -> int:
     recipe = Recipe(
+        user_id=user_id,
         title=data["title"],
         description=data.get("description"),
         servings=data.get("servings"),
@@ -255,6 +262,8 @@ def _finalize(
     passages: list[dict],
     safety_query: str,
     source_url: str | None = None,
+    kitchen_snapshot: dict | None = None,
+    user_id: int | None = None,
 ) -> dict:
     if not result.get("feasible", False):
         return {"feasible": False, "message": result.get("description", "")}
@@ -262,9 +271,9 @@ def _finalize(
     steps = result.get("steps", [])
     _attach_citations(steps, passages)
     enforcement = _enforce_safety_floor(db, safety_query, steps)
-    recipe_id = _persist(db, result, source_url)
+    recipe_id = _persist(db, result, source_url, user_id=user_id)
 
-    return {
+    out = {
         "feasible": True,
         "recipe_id": recipe_id,
         "title": result["title"],
@@ -280,36 +289,59 @@ def _finalize(
             "culinary practice and is not individually cited."
         ),
     }
+    return personalize_recipe(out, kitchen_snapshot)
 
 
-def generate_recipe(db: Session, request: str, servings: int | None = None) -> dict:
+def generate_recipe(
+    db: Session,
+    request: str,
+    servings: int | None = None,
+    kitchen_snapshot: dict | None = None,
+    user_id: int | None = None,
+) -> dict:
     passages = search_passages(db, request, top_k=8)
     user_prompt = f"REQUEST: {request}\n"
     if servings:
         user_prompt += f"SERVINGS: {servings}\n"
+    kitchen = kitchen_prompt_block(kitchen_snapshot)
+    if kitchen:
+        user_prompt += f"\n{kitchen}\n"
     user_prompt += f"\nEVIDENCE:\n{_evidence_block(passages)}"
 
     result = complete_json(GENERATE_PROMPT, user_prompt)
     # Safety lookup keys off request + title: "crispy thighs" alone would
     # miss the chicken rule if the user only said "thighs".
     safety_query = f"{request} {result.get('title', '')}"
-    return _finalize(db, result, passages, safety_query)
+    return _finalize(
+        db, result, passages, safety_query,
+        kitchen_snapshot=kitchen_snapshot, user_id=user_id,
+    )
 
 
 def adapt_recipe(
-    db: Session, recipe_text: str, source_url: str | None = None
+    db: Session,
+    recipe_text: str,
+    source_url: str | None = None,
+    kitchen_snapshot: dict | None = None,
+    user_id: int | None = None,
 ) -> dict:
     passages = search_passages(db, recipe_text[:1500], top_k=8)
     density_keys = ", ".join(sorted(DENSITY_G_PER_ML))
+    kitchen = kitchen_prompt_block(kitchen_snapshot)
     user_prompt = (
         f"RECIPE TEXT:\n{recipe_text}\n\n"
         f"DENSITY KEYS: {density_keys}\n\n"
-        f"EVIDENCE:\n{_evidence_block(passages)}"
     )
+    if kitchen:
+        user_prompt += f"{kitchen}\n\n"
+    user_prompt += f"EVIDENCE:\n{_evidence_block(passages)}"
     result = complete_json(ADAPT_PROMPT_TEMPLATE, user_prompt)
     if result.get("feasible"):
         result["ingredients"] = _standardize_ingredients(
             result.get("ingredients", [])
         )
     safety_query = f"{recipe_text[:300]} {result.get('title', '')}"
-    return _finalize(db, result, passages, safety_query, source_url)
+    return _finalize(
+        db, result, passages, safety_query, source_url,
+        kitchen_snapshot=kitchen_snapshot, user_id=user_id,
+    )

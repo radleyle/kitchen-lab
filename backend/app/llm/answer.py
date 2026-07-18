@@ -10,6 +10,7 @@ exists to keep the LLM inside the trust boundary:
 
 from sqlalchemy.orm import Session
 
+from app.kitchen.personalize import kitchen_prompt_block
 from app.llm.client import complete_json
 from app.rag.retrieval import search_passages
 from app.safety.temps import find_temp_rule, rule_to_response
@@ -45,7 +46,12 @@ Respond with JSON exactly in this shape:
 """
 
 
-def answer_question(db: Session, question: str, top_k: int = 5) -> dict:
+def answer_question(
+    db: Session,
+    question: str,
+    top_k: int = 5,
+    kitchen_snapshot: dict | None = None,
+) -> dict:
     # 1. Gather evidence: semantic retrieval + deterministic safety lookup.
     passages = search_passages(db, question, top_k)
     safety_rule = find_temp_rule(db, question)
@@ -59,6 +65,9 @@ def answer_question(db: Session, question: str, top_k: int = 5) -> dict:
             f"Claim: {p['claim']}\n{p['content']}"
         )
     user_prompt = f"QUESTION: {question}\n\nEVIDENCE:\n" + "\n\n".join(evidence_lines)
+    kitchen = kitchen_prompt_block(kitchen_snapshot)
+    if kitchen:
+        user_prompt += f"\n\n{kitchen}"
     if safety:
         user_prompt += (
             f"\n\nSAFETY (authoritative, from {safety['source']['title']}): "

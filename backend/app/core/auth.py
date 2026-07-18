@@ -17,6 +17,9 @@ from app.models import User
 # Extracts the "Authorization: Bearer <token>" header for us,
 # and makes the /docs page show an Authorize button.
 bearer_scheme = HTTPBearer()
+# Same header, but missing token is OK -- used by endpoints that personalize
+# when logged in and still work anonymously.
+optional_bearer = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
@@ -38,3 +41,17 @@ def get_current_user(
             detail="User no longer exists",
         )
     return user
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Return the user when a valid token is present; otherwise None."""
+    if credentials is None:
+        return None
+    try:
+        user_id = decode_access_token(credentials.credentials)
+    except jwt.InvalidTokenError:
+        return None
+    return db.get(User, user_id)
