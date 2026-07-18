@@ -16,6 +16,7 @@ from app.agent.intent import classify
 from app.diagnosis.engine import start_diagnosis
 from app.llm.answer import answer_question
 from app.recipes.generator import adapt_recipe, generate_recipe
+from app.substitution.engine import suggest_substitutes
 
 
 def handle_learn(db: Session, message: str, intent: dict) -> dict:
@@ -59,8 +60,21 @@ def handle_adapt(db: Session, message: str, intent: dict) -> dict:
     return result
 
 
+def handle_substitute(db: Session, message: str, intent: dict) -> dict:
+    ingredient = intent.get("ingredient_to_replace") or intent.get("food")
+    if ingredient:
+        result = suggest_substitutes(db, message, ingredient)
+        if result.get("found"):
+            result["handler"] = "substitution_engine"
+            return result
+    # Ingredient missing from the vetted database -> honest grounded answer.
+    result = answer_question(db, message)
+    result["handler"] = "grounded_answer (no vetted substitution data)"
+    return result
+
+
 def handle_fallback(db: Session, message: str, intent: dict) -> dict:
-    # substitute / experiment engines are not built yet;
+    # The experiment engine is not built yet;
     # a grounded, cited answer is the honest interim behavior.
     result = answer_question(db, message)
     result["handler"] = "grounded_answer (fallback; dedicated engine coming)"
@@ -72,7 +86,7 @@ HANDLERS: dict[str, Callable[[Session, str, dict], dict]] = {
     "diagnose": handle_diagnose,
     "cook": handle_cook,
     "adapt": handle_adapt,
-    "substitute": handle_fallback,
+    "substitute": handle_substitute,
     "experiment": handle_fallback,
 }
 

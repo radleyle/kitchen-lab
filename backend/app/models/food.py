@@ -56,3 +56,4 @@ class Substitution(Base):
     original: Mapped[Ingredient] = relationship(foreign_keys=[original_id])
     substitute: Mapped[Ingredient] = relationship(foreign_keys=[substitute_id])
     function: Mapped[IngredientFunction] = relationship()
+    source: Mapped["KnowledgeSource | None"] = relationship("KnowledgeSource")

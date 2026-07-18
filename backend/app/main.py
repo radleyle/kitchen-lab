@@ -21,6 +21,7 @@ from app.routers import (
     knowledge,
     recipes,
     safety,
+    substitute,
 )
 
 app = FastAPI(title=settings.app_name)
@@ -32,6 +33,7 @@ app.include_router(calculators.router)
 app.include_router(diagnose.router)
 app.include_router(knowledge.router)
 app.include_router(recipes.router)
+app.include_router(substitute.router)
 app.include_router(safety.router)
 
 # CORS = browser security rule. By default a page served from localhost:3000
