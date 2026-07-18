@@ -26,5 +26,8 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
 
+    # Local photo storage root (S3 later). Inside Docker this is /app/media.
+    media_root: str = "media"
+
 
 settings = Settings()

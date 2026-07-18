@@ -15,28 +15,36 @@ from app.core.db import get_db
 from app.routers import (
     agent,
     assistant,
+    attachments,
     auth,
     calculators,
     diagnose,
+    experiments,
     kitchen,
     knowledge,
+    notebook,
     recipes,
     safety,
     substitute,
+    techniques,
 )
 
 app = FastAPI(title=settings.app_name)
 
 app.include_router(agent.router)
 app.include_router(assistant.router)
+app.include_router(attachments.router)
 app.include_router(auth.router)
 app.include_router(calculators.router)
 app.include_router(diagnose.router)
+app.include_router(experiments.router)
 app.include_router(kitchen.router)
 app.include_router(knowledge.router)
+app.include_router(notebook.router)
 app.include_router(recipes.router)
 app.include_router(substitute.router)
 app.include_router(safety.router)
+app.include_router(techniques.router)
 
 # CORS = browser security rule. By default a page served from localhost:3000
 # (our frontend) is NOT allowed to call an API on localhost:8000 (a different

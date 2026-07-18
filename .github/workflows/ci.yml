@@ -20,8 +20,15 @@ jobs:
       - name: Sanity-check the app imports
         run: python -c "from app.main import app; print('backend imports OK')"
         working-directory: backend
-      - name: Run tests
-        run: pytest -v
+      - name: Run unit tests
+        run: pytest -v --ignore=tests/test_live_evals.py
+        working-directory: backend
+      - name: Run eval harness
+        # Deterministic trust-contract scenarios (no OpenAI, no database).
+        # Catches regressions like "brine must not boost 'no pre-salting'".
+        run: |
+          pytest -v tests/test_evals.py
+          python -m app.evals.report
         working-directory: backend
 
   frontend:

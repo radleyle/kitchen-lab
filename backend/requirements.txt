@@ -21,6 +21,8 @@ email-validator==2.2.0
 pytest==8.4.1
 # OpenAI client, used ONLY for embeddings + phrasing (never facts/numbers)
 openai==1.97.0
+# Required by FastAPI for multipart file uploads (experiment/notebook photos)
+python-multipart==0.0.20
 
 
 

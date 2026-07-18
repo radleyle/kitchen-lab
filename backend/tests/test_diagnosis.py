@@ -2,8 +2,11 @@
 LLM's opinion. No database, no network: priors and verdicts in, ranking out.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
+from app.diagnosis.evidence import apply_hard_evidence
 from app.diagnosis.scoring import confidence_category, score_causes
 
 
@@ -57,3 +60,29 @@ def test_confidence_low_when_flat():
 def test_confidence_single_cause():
     assert confidence_category({1: 1.0}) == "high"
     assert confidence_category({}) == "low"
+
+
+def test_hard_rule_marinade_contradicts_no_presalting():
+    # The live-eval failure mode: LLM said "supports"; Python must override.
+    causes = [
+        SimpleNamespace(id=4, cause="No pre-salting or brining"),
+        SimpleNamespace(id=2, cause="Sliced with the grain instead of against it"),
+    ]
+    answers = [
+        {"question": "Did you salt ahead?", "answer": "Salty marinade for 4 hours"},
+        {"question": "How did you slice?", "answer": "Lengthwise along the grain"},
+    ]
+    verdicts = {4: ["supports"], 2: ["neutral"]}
+    notes: dict[int, str] = {}
+    fixed = apply_hard_evidence(causes, answers, verdicts, notes)
+    assert fixed[4] == ["contradicts"]
+    assert fixed[2] == ["supports"]
+    assert "Hard rule" in notes[4]
+
+
+def test_hard_rule_skipped_salt_supports_absence_cause():
+    causes = [SimpleNamespace(id=4, cause="No pre-salting or brining")]
+    answers = [{"question": "Salt?", "answer": "I salted right before it hit the pan"}]
+    notes: dict[int, str] = {}
+    fixed = apply_hard_evidence(causes, answers, {4: ["neutral"]}, notes)
+    assert fixed[4] == ["supports"]

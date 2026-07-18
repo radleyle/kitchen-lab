@@ -14,6 +14,7 @@ arrives cited like everything else.
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.diagnosis.evidence import apply_hard_evidence
 from app.diagnosis.scoring import VERDICTS, confidence_category, score_causes
 from app.llm.answer import answer_question
 from app.llm.client import complete_json
@@ -42,10 +43,13 @@ For EVERY candidate cause, decide what each answer implies:
 Rules:
 1. Judge only from what the user actually said. Vague or uncertain answers
    ("I think so", "not sure") are "neutral".
-2. Careful with negatively-phrased causes: for a cause like "did not salt
-   ahead", an answer showing the user DID salt ahead is "contradicts".
+2. Negatively-phrased causes flip carefully. Worked example:
+   Cause: "No pre-salting or brining"
+   Answer: "Salty marinade for 4 hours"
+   Verdict: "contradicts"  (they DID salt/brine ahead, so this cause is false)
 3. An answer can bear on causes other than the question it responded to.
-4. Do not diagnose, rank, or recommend anything. Verdicts only.
+4. Emit exactly one verdict per answer, in the same order as the answers.
+5. Do not diagnose, rank, or recommend anything. Verdicts only.
 
 Respond with JSON exactly in this shape:
 {"assessments": [
@@ -166,6 +170,10 @@ def conclude_diagnosis(
             ]
             if item.get("key_evidence"):
                 evidence_notes[cause.id] = item["key_evidence"]
+
+        # Deterministic last word on clear keyword cases (e.g. marinade
+        # cannot "support" a "no pre-salting" cause).
+        verdicts = apply_hard_evidence(causes, answers, verdicts, evidence_notes)
 
     scores = score_causes(priors, verdicts)
     ranked = sorted(causes, key=lambda c: scores[c.id], reverse=True)

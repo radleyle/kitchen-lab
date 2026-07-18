@@ -13,5 +13,8 @@ npm-debug.log*
 .env
 .env.local
 
+# Local experiment/notebook photo storage
+backend/media/
+
 # OS noise
 .DS_Store
