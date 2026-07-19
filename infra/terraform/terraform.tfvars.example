@@ -1,0 +1,15 @@
+aws_region  = "us-west-2"
+project     = "kitchenlab"
+environment = "dev"
+
+db_username = "kitchenlab"
+# Generate a strong password; do NOT commit the real tfvars file.
+db_password = "change-me-to-a-long-random-string"
+secret_key  = "change-me-jwt-secret-at-least-32-chars"
+
+# Optional on first apply (leave empty): create ECR/RDS/S3/ALB first,
+# push images, then set these and apply again to create ECS services.
+backend_image  = ""
+frontend_image = ""
+
+openai_api_key = ""
