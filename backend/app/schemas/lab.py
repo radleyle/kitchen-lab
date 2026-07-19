@@ -83,6 +83,17 @@ class TrialCreate(BaseModel):
     notes: str | None = None
 
 
+class AttachmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    s3_key: str
+    kind: str
+    trial_id: int | None
+    notebook_entry_id: int | None
+    created_at: datetime
+
+
 class TrialOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -91,6 +102,7 @@ class TrialOut(BaseModel):
     variable_value: str
     notes: str | None
     observations: list[ObservationOut] = []
+    attachments: list[AttachmentOut] = []
 
 
 class ExperimentCreate(BaseModel):
@@ -124,14 +136,3 @@ class ExperimentOut(BaseModel):
 class ExperimentDesignRequest(BaseModel):
     message: str = Field(min_length=5, max_length=2000)
     persist: bool = False
-
-
-class AttachmentOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    s3_key: str
-    kind: str
-    trial_id: int | None
-    notebook_entry_id: int | None
-    created_at: datetime

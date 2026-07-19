@@ -39,6 +39,26 @@ def get_content(
     return Response(content=data, media_type=media)
 
 
+@router.delete("/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_attachment(
+    attachment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Remove the DB row and the file on disk / S3."""
+    attachment = db.get(Attachment, attachment_id)
+    if attachment is None or attachment.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    key = attachment.s3_key
+    db.delete(attachment)
+    db.commit()
+    try:
+        get_storage().delete(key)
+    except (FileNotFoundError, ValueError):
+        # Row is gone; orphan file is acceptable for a learning stack.
+        pass
+
+
 @router.post(
     "/notebook/{entry_id}",
     response_model=AttachmentOut,

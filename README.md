@@ -74,9 +74,19 @@ docker compose up --build
 
 Then open:
 
-- http://localhost:3001 — frontend
+- http://localhost:3001 — frontend (port **3001** on the host; container logs may say 3000)
 - http://localhost:8000/docs — interactive API playground
 - http://localhost:8000/health — backend health check
+
+### Frontend pages (Compose)
+
+| Page | URL | What you do there |
+| ---- | --- | ----------------- |
+| **Ask** | `/` | Chat with `POST /agent/ask` (learn / cook / diagnose / …) |
+| **Lab** | `/lab` | Techniques library, experiments (+ draft photos), notebook |
+| **My kitchen** | `/kitchen` | Register/login, profile (oven/allergens), equipment |
+
+Sign in on **My kitchen** so Ask/Lab can send a Bearer token and personalize.
 
 Stop with `Ctrl+C`, or `docker compose down`. Add `-v` to also wipe the database volume.
 

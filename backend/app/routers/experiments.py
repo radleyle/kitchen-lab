@@ -37,7 +37,8 @@ def _load_owned(db: Session, experiment_id: int, user_id: int) -> Experiment:
         select(Experiment)
         .where(Experiment.id == experiment_id)
         .options(
-            joinedload(Experiment.trials).joinedload(ExperimentTrial.observations)
+            joinedload(Experiment.trials).joinedload(ExperimentTrial.observations),
+            joinedload(Experiment.trials).joinedload(ExperimentTrial.attachments),
         )
     )
     if experiment is None or experiment.user_id != user_id:
@@ -54,7 +55,8 @@ def list_experiments(
             select(Experiment)
             .where(Experiment.user_id == user.id)
             .options(
-                joinedload(Experiment.trials).joinedload(ExperimentTrial.observations)
+                joinedload(Experiment.trials).joinedload(ExperimentTrial.observations),
+                joinedload(Experiment.trials).joinedload(ExperimentTrial.attachments),
             )
             .order_by(Experiment.created_at.desc())
         ).unique()

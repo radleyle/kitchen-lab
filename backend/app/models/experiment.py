@@ -42,6 +42,9 @@ class ExperimentTrial(Base):
 
     experiment: Mapped[Experiment] = relationship(back_populates="trials")
     observations: Mapped[list["Observation"]] = relationship(back_populates="trial")
+    attachments: Mapped[list["Attachment"]] = relationship(
+        back_populates="trial"
+    )
 
 
 class Observation(Base):
@@ -76,6 +79,8 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    trial: Mapped[ExperimentTrial | None] = relationship(back_populates="attachments")
 
 
 class NotebookEntry(Base):
