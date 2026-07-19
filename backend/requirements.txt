@@ -23,6 +23,8 @@ pytest==8.4.1
 openai==1.97.0
 # Required by FastAPI for multipart file uploads (experiment/notebook photos)
 python-multipart==0.0.20
+# S3 client for production photo storage (local disk still used in Compose)
+boto3==1.39.4
 
 
 

@@ -1,31 +1,180 @@
 # KitchenLab
 
-Cook better through science. A "cooking through science" AI agent that teaches,
-generates and adapts recipes, diagnoses cooking failures, and recommends
-substitutions -- with every answer grounded in a cited food-science knowledge
-base and deterministic calculators (the LLM explains; it never invents numbers
-or safety facts).
+Cook better through science. An AI cooking agent that **teaches**, **generates and adapts recipes**, **diagnoses failures**, **suggests substitutions**, and helps you run **small kitchen experiments** — with every answer grounded in a cited food-science knowledge base and deterministic calculators.
+
+**Trust split (the product idea):** the LLM phrases and personalizes. It never invents temperatures, gram conversions, or safety facts. Those come from code, USDA tables, and curated passages with claim-level citations.
 
 ## Architecture
 
-| Piece    | Tech                    | Role                                       |
-| -------- | ----------------------- | ------------------------------------------ |
-| Frontend | Next.js + TypeScript    | The website users see (port 3001)          |
-| Backend  | Python + FastAPI        | API, calculators, RAG, agent (port 8000)   |
-| Database | Postgres 16 + pgvector  | Relational data + semantic search (5432)   |
+| Piece    | Tech                   | Role                                      |
+| -------- | ---------------------- | ----------------------------------------- |
+| Frontend | Next.js + TypeScript   | UI (port **3001**)                        |
+| Backend  | Python + FastAPI       | API, agent, RAG, calculators (port 8000)  |
+| Database | Postgres 16 + pgvector | Relational data + semantic search (5432)  |
+| Photos   | Local disk or S3       | Experiment/notebook attachments           |
+
+## Tech stack
+
+### Local (what runs today)
+
+| Layer | Choices | Why it’s here |
+| ----- | ------- | ------------- |
+| Containers | Docker + Docker Compose | Same pantry/kitchen/dining-room stack on every machine |
+| Frontend | Next.js, TypeScript, React | Typed UI; port **3001** locally |
+| Backend | Python 3.12, FastAPI, Uvicorn | HTTP API + auto `/docs` playground |
+| Validation | Pydantic / pydantic-settings | Request shapes + env config |
+| ORM & migrations | SQLAlchemy 2, Alembic | Models as Python; schema versioned like code |
+| Database | PostgreSQL 16 + **pgvector** | Tables for users/recipes/etc.; vectors for RAG |
+| Auth | JWT (PyJWT) + bcrypt | Stateless login; passwords stored as hashes only |
+| LLM / embeddings | OpenAI API (`gpt-4o-mini`, `text-embedding-3-small`) | Phrasing + semantic search — **not** facts or math |
+| Tests | pytest | Unit tests + deterministic eval scenarios |
+| CI | GitHub Actions | Runs tests/evals on push and PRs |
+| Photo storage | Local filesystem (`STORAGE_BACKEND=local`) | Same key shape as S3 |
+
+### Production (scaffolded under `infra/`)
+
+| Piece | AWS / service | Maps from local |
+| ----- | ------------- | --------------- |
+| App containers | **ECS Fargate** | `backend` / `frontend` Compose services |
+| Images | **ECR** | Local Docker images |
+| Database | **RDS** Postgres 16 | Compose `db` service |
+| Photos / uploads | **S3** (`STORAGE_BACKEND=s3`) | Local `media` volume |
+| Front door | **Application Load Balancer** | localhost ports |
+| IaC | **Terraform** | `docker-compose.yml` |
+| CI | GitHub Actions (tests) | `.github/workflows/ci.yml` |
+| CD | GitHub Actions → build/push ECR | `.github/workflows/deploy.yml` |
+
+Step-by-step apply / destroy / cost notes: **[`infra/README.md`](infra/README.md)**. Nothing is created in your AWS account until you run `terraform apply` yourself.
+
+## Agent modes
+
+| Mode         | What it does                                                                 |
+| ------------ | ---------------------------------------------------------------------------- |
+| **learn**    | Grounded Q&A + technique library when a named technique matches              |
+| **cook**     | Science-annotated recipe generation; USDA safety floor enforced in Python    |
+| **adapt**    | Paste a recipe → standardize measures (Python does the math) + annotate      |
+| **diagnose** | Symptom taxonomy → follow-ups → evidence-ranked causes + cited fix           |
+| **substitute** | Function-aware swaps (egg-as-moisture ≠ egg-as-binder)                     |
+| **experiment** | Designs a controlled trial; you log observations, photos, and conclusions |
+
+Optional **kitchen profile** (oven offset, elevation, equipment, allergies) personalizes cook/adapt/substitute when you send a Bearer token.
 
 ## Run locally
 
-Requires Docker Desktop.
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
+# 1. Secrets (gitignored)
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY=...
+
+# 2. Start the stack
 docker compose up --build
 ```
 
 Then open:
 
-- http://localhost:3001 -- the app
-- http://localhost:8000/docs -- interactive API playground (auto-generated)
+- http://localhost:3001 — frontend
+- http://localhost:8000/docs — interactive API playground
+- http://localhost:8000/health — backend health check
 
-Stop with `Ctrl+C`, or `docker compose down` to also remove containers.
-Add `-v` (`docker compose down -v`) to wipe the database volume too.
+Stop with `Ctrl+C`, or `docker compose down`. Add `-v` to also wipe the database volume.
+
+### First-time database setup
+
+With the stack running, apply migrations and seed data:
+
+```bash
+docker compose exec backend alembic upgrade head
+
+docker compose exec backend python -m app.seeds.safety_seed
+docker compose exec backend python -m app.seeds.knowledge_seed
+docker compose exec backend python -m app.rag.ingestion          # embed passages (needs OPENAI_API_KEY)
+docker compose exec backend python -m app.seeds.symptoms_seed
+docker compose exec backend python -m app.seeds.food_seed
+docker compose exec backend python -m app.seeds.techniques_seed
+```
+
+Seeds are additively idempotent — safe to re-run.
+
+## Useful API routes
+
+Full list and try-it-out forms: http://localhost:8000/docs
+
+| Area        | Endpoints (summary)                                      |
+| ----------- | -------------------------------------------------------- |
+| Auth        | `POST /auth/register`, `/auth/login`, `GET /auth/me`     |
+| Agent       | `POST /agent/ask` (optional Bearer for personalization)  |
+| Diagnose    | `POST /diagnose/start`, `/diagnose/conclude`             |
+| Recipes     | `POST /recipes/generate`, `/recipes/adapt`, `GET /recipes/{id}` |
+| Substitute  | `POST /substitute`                                       |
+| Kitchen     | `GET /kitchen`, `PUT /kitchen/profile`, equipment CRUD   |
+| Techniques  | `GET /techniques`, `GET /techniques/{slug}`              |
+| Lab         | `/experiments`, `/notebook`, `/attachments/...`          |
+| Calculators | `/calculators/...` (units, brine, scaling, baker’s %)    |
+| Safety      | internal temps + allergen scan                           |
+| Knowledge   | semantic search over cited passages                      |
+
+## Tests & eval harness
+
+```bash
+# Unit tests + deterministic eval scenarios (CI)
+docker compose exec backend pytest -v --ignore=tests/test_live_evals.py
+
+# Human-readable eval report
+docker compose exec backend python -m app.evals.report
+
+# Optional live LLM checks (costs API credits; needs seeded DB + key)
+LIVE_EVALS=1 docker compose exec -e LIVE_EVALS=1 backend pytest -v -m live
+```
+
+The **eval harness** encodes trust contracts as scenarios (e.g. marinade must not boost “no pre-salting”; chicken below 74°C is raised to the USDA floor; 1 tsp salt ≠ cup-scale grams). Deterministic scenarios always run in GitHub Actions; live tests are opt-in.
+
+## Project layout
+
+```
+backend/
+  app/
+    agent/          # intent router + mode dispatch
+    calculators/    # deterministic math
+    diagnosis/      # cause ranking + hard evidence rules
+    evals/          # scenario catalog + grader
+    kitchen/        # profile personalization
+    lab/            # experiment design helpers
+    llm/            # OpenAI client (phrasing only)
+    rag/            # embeddings + pgvector retrieval
+    recipes/        # generate / adapt
+    safety/         # temps + allergens
+    seeds/          # idempotent seed scripts
+    storage/        # local + S3 photo backends
+    routers/        # FastAPI HTTP surface
+  tests/
+  alembic/          # DB migrations
+  Dockerfile.prod
+frontend/           # Next.js app (+ Dockerfile.prod)
+infra/terraform/    # AWS: VPC, ECR, RDS, S3, ALB, ECS
+docker-compose.yml
+```
+
+## Deploy to AWS (overview)
+
+Production images:
+
+- `backend/Dockerfile.prod`
+- `frontend/Dockerfile.prod` (Next.js `output: "standalone"`)
+
+```bash
+# See infra/README.md for the full three-phase flow:
+# 1) terraform apply (ECR, RDS, S3, ALB, VPC) with images left empty
+# 2) docker build/push to ECR  (or GitHub Actions deploy.yml)
+# 3) set backend_image / frontend_image and terraform apply again
+```
+
+CD pushes images only; it does **not** auto-`terraform apply`, so CI cannot surprise-bill you.
+
+## Notes for contributors / interviewers
+
+- **Citations are claim-level** — passages carry scope, confidence, and source metadata.
+- **Safety and arithmetic outrank the LLM** — internal temps, oven dial offsets, and volume→grams are enforced in Python after generation.
+- **Diagnosis scoring is pure math**; the LLM only maps free-text answers to supports / contradicts / neutral (with keyword hard rules for known failure modes).
+- Teaching notes for AI agents working in this repo: see [`AGENTS.md`](AGENTS.md).

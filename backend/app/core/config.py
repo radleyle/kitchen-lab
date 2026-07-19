@@ -26,8 +26,15 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
 
-    # Local photo storage root (S3 later). Inside Docker this is /app/media.
+    # Photo storage: "local" (Compose) or "s3" (ECS).
+    storage_backend: str = "local"
     media_root: str = "media"
+    s3_bucket: str = ""
+    aws_region: str = "us-west-2"
+
+    # Comma-separated browser origins allowed to call the API in production.
+    # Example: https://app.example.com,https://www.example.com
+    cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
 
 settings = Settings()

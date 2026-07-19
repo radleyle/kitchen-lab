@@ -1,20 +1,10 @@
-"""Local filesystem storage for attachments.
-
-Keys look like:  attachments/42/a1b2c3d4.jpg
-In production an S3Storage can return the same key shape pointing at a bucket.
-"""
+"""Local filesystem storage for attachments (Docker Compose / laptop)."""
 
 import uuid
 from pathlib import Path
 
 from app.core.config import settings
-
-ALLOWED_CONTENT_TYPES = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-}
-MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+from app.storage.base import ALLOWED_CONTENT_TYPES, MAX_BYTES
 
 
 class LocalStorage:
@@ -41,7 +31,6 @@ class LocalStorage:
         return key
 
     def path_for(self, key: str) -> Path:
-        # Reject path traversal ("../etc/passwd").
         path = (self.root / key).resolve()
         if not str(path).startswith(str(self.root.resolve())):
             raise ValueError("Invalid storage key")
@@ -57,13 +46,3 @@ class LocalStorage:
         path = self.path_for(key)
         if path.is_file():
             path.unlink()
-
-
-_storage: LocalStorage | None = None
-
-
-def get_storage() -> LocalStorage:
-    global _storage
-    if _storage is None:
-        _storage = LocalStorage()
-    return _storage

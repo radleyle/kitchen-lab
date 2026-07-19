@@ -37,3 +37,14 @@ def test_local_storage_rejects_path_traversal(tmp_path):
     store = LocalStorage(root=str(tmp_path))
     with pytest.raises(ValueError, match="Invalid"):
         store.path_for("../etc/passwd")
+
+
+def test_get_storage_defaults_to_local(monkeypatch):
+    import app.storage as storage_mod
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "storage_backend", "local")
+    storage_mod._storage = None
+    store = storage_mod.get_storage()
+    assert isinstance(store, LocalStorage)
+    storage_mod._storage = None

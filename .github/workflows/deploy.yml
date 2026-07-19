@@ -1,0 +1,62 @@
+# CD: build production images and push to ECR.
+# Does NOT run terraform apply (that stays a conscious human step so we
+# never surprise-bill an AWS account from CI).
+#
+# Required GitHub secrets:
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   AWS_REGION (optional; defaults to us-west-2)
+#   NEXT_PUBLIC_API_URL (ALB or custom domain, e.g. http://xxx.elb.amazonaws.com)
+
+name: Deploy images to ECR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    # Skip silently on forks / repos that have not configured AWS secrets yet.
+    if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE=$REGISTRY/kitchenlab-backend
+          docker build -f backend/Dockerfile.prod -t $IMAGE:latest -t $IMAGE:${{ github.sha }} backend
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
+
+      - name: Build and push frontend
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: |
+          IMAGE=$REGISTRY/kitchenlab-frontend
+          docker build -f frontend/Dockerfile.prod \
+            --build-arg NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000} \
+            -t $IMAGE:latest -t $IMAGE:${{ github.sha }} frontend
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}

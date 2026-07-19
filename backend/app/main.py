@@ -49,9 +49,11 @@ app.include_router(techniques.router)
 # CORS = browser security rule. By default a page served from localhost:3000
 # (our frontend) is NOT allowed to call an API on localhost:8000 (a different
 # "origin"). This middleware tells browsers: that's allowed.
+# Production origins come from CORS_ORIGINS (comma-separated).
+_cors = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=_cors or ["http://localhost:3001"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
