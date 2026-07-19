@@ -291,9 +291,8 @@ export function ExperimentsPanel() {
   return (
     <div className="experiments">
       <p className="field-hint">
-        One independent variable, two or more trials, same constants — like a
-        science fair for dinner. Click an experiment to open it. Photo changes
-        stay as a draft until you hit Save.
+        Click an experiment to open it. Photo adds/removes stay as a draft until
+        you hit Save — closing with unsaved changes will warn you.
       </p>
 
       <form className="stack-form" onSubmit={onDesign}>

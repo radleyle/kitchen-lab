@@ -19,12 +19,12 @@ type Turn = {
   diagnoseSlug?: string;
 };
 
-const EXAMPLES = [
-  "Why does bread get crusty?",
-  "My roast chicken is dry — what went wrong?",
-  "Generate a recipe for pan-seared salmon for 2",
-  "I have eggs and butter — what can I make?",
-  "Substitute buttermilk in pancakes",
+const EXAMPLES: { mode: string; q: string }[] = [
+  { mode: "Learn", q: "Why does bread get crusty?" },
+  { mode: "Diagnose", q: "My roast chicken is dry — what went wrong?" },
+  { mode: "Cook", q: "Generate a recipe for pan-seared salmon for 2" },
+  { mode: "Cook", q: "I have eggs and butter — what can I make?" },
+  { mode: "Substitute", q: "Substitute buttermilk in pancakes" },
 ];
 
 export function AgentChat() {
@@ -158,17 +158,18 @@ export function AgentChat() {
 
       {turns.length === 0 && (
         <div className="examples">
-          <p className="examples-label">Try one</p>
+          <p className="examples-label">Not sure what to ask? Try one</p>
           <ul>
             {EXAMPLES.map((ex) => (
-              <li key={ex}>
+              <li key={ex.q}>
                 <button
                   type="button"
                   className="example-btn"
-                  onClick={() => submit(ex)}
+                  onClick={() => submit(ex.q)}
                   disabled={loading}
                 >
-                  {ex}
+                  <span className="ex-mode">{ex.mode}</span>
+                  <span className="ex-q">{ex.q}</span>
                 </button>
               </li>
             ))}

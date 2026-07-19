@@ -82,8 +82,11 @@ Then open:
 
 | Page | URL | What you do there |
 | ---- | --- | ----------------- |
-| **Ask** | `/` | Chat with `POST /agent/ask` (learn / cook / diagnose / …) |
+| **Home** | `/` | Marketing landing (hero + how KitchenLab is organized) |
+| **Ask** | `/ask` | Chat with `POST /agent/ask` (learn / cook / diagnose / …) |
+| **Recipes** | `/recipes` | Science-annotated generate + personal cookbook |
 | **Lab** | `/lab` | Techniques library, experiments (+ draft photos), notebook |
+| **Calculators** | `/calculators` | Brine, scale, baker’s %, volume→grams (Python math) |
 | **My kitchen** | `/kitchen` | Register/login, profile (oven/allergens), equipment |
 
 Sign in on **My kitchen** so Ask/Lab can send a Bearer token and personalize.

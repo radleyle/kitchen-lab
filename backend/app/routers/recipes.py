@@ -10,9 +10,10 @@ equipment, dietary restrictions) and owns the saved recipe.
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_optional_user
+from app.core.auth import get_current_user, get_optional_user
 from app.core.db import get_db
 from app.kitchen.context import load_kitchen_snapshot
 from app.models import Recipe, User
@@ -29,6 +30,30 @@ class GenerateRequest(BaseModel):
 class AdaptRequest(BaseModel):
     recipe_text: str = Field(min_length=20, max_length=15000)
     source_url: str | None = Field(default=None, max_length=500)
+
+
+@router.get("")
+def list_my_recipes(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Cookbook shelf: recipes generated while this user was signed in."""
+    rows = list(
+        db.scalars(
+            select(Recipe)
+            .where(Recipe.user_id == user.id)
+            .order_by(Recipe.id.desc())
+        )
+    )
+    return [
+        {
+            "id": r.id,
+            "title": r.title,
+            "description": r.description,
+            "servings": r.servings,
+        }
+        for r in rows
+    ]
 
 
 @router.post("/generate")

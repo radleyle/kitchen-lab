@@ -411,3 +411,123 @@ export async function deleteAttachment(attachmentId: number): Promise<void> {
   );
   if (!res.ok) throw new Error(await readError(res));
 }
+
+/** Calculators are public — no auth. Python owns the numbers. */
+
+export async function calcBrine(body: {
+  water_g: number;
+  brine_percent: number;
+  salt_type: string;
+}): Promise<{ salt_g: number; salt_tbsp: number; salt_type: string }> {
+  const res = await apiFetch("/calculators/brine", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function calcScale(body: {
+  ingredients: { name: string; amount: number; unit: string }[];
+  original_servings: number;
+  target_servings: number;
+}): Promise<
+  { name: string; amount: number; unit: string; note: string | null }[]
+> {
+  const res = await apiFetch("/calculators/scale", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function calcBakersPercentages(body: {
+  ingredients_g: Record<string, number>;
+}): Promise<{
+  percentages: Record<string, number>;
+  hydration_percent: number;
+}> {
+  const res = await apiFetch("/calculators/bakers-percentages", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function calcVolumeToGrams(body: {
+  amount: number;
+  unit: string;
+  ingredient: string;
+}): Promise<{ grams: number }> {
+  const res = await apiFetch("/calculators/volume-to-grams", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export type RecipeStep = {
+  position?: number;
+  instruction: string;
+  why?: string | null;
+  science?: string | null;
+  visual_cues?: string | null;
+  critical_temp_c?: number | null;
+  target_internal_temp_c?: number | null;
+  citations?: unknown;
+};
+
+export type GeneratedRecipe = {
+  feasible: boolean;
+  recipe_id?: number;
+  title?: string;
+  description?: string;
+  servings?: number | null;
+  ingredients?: {
+    ingredient: string;
+    grams?: number | null;
+    amount?: string;
+  }[];
+  steps?: RecipeStep[];
+  safety_overrides?: unknown[];
+  kitchen?: { notes?: string[]; dietary_conflicts?: unknown[] };
+  grounding_note?: string;
+  message?: string;
+  personalized?: boolean;
+};
+
+export type RecipeSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  servings: number | null;
+};
+
+export async function generateRecipe(body: {
+  request: string;
+  servings?: number | null;
+}): Promise<GeneratedRecipe> {
+  const res = await apiFetch(
+    "/recipes/generate",
+    { method: "POST", body: JSON.stringify(body) },
+    true,
+  );
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function listMyRecipes(): Promise<RecipeSummary[]> {
+  const res = await apiFetch("/recipes", {}, true);
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function getRecipe(id: number): Promise<GeneratedRecipe> {
+  const res = await apiFetch(`/recipes/${id}`);
+  if (!res.ok) throw new Error(await readError(res));
+  const data = await res.json();
+  return { feasible: true, ...data };
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { FeatureGuide } from "@/components/FeatureGuide";
 import {
   addEquipment,
   deleteEquipment,
@@ -229,15 +230,43 @@ export default function KitchenPage() {
       <header className="page-header">
         <h1>My kitchen</h1>
         <p className="lede">
-          Oven, altitude, allergies, and gear. When you’re signed in, cook /
-          adapt / substitute can adjust to this room — not a generic kitchen.
+          Tell KitchenLab about your real setup. Signed-in answers can adjust to
+          your oven, diet, and gear — not a generic kitchen.
         </p>
+        <FeatureGuide
+          title="Why set up a kitchen profile?"
+          summary="Anonymous Ask still works. Signing in is optional — but it’s how personalization happens (cold ovens, allergies, cast iron, etc.)."
+          when="Set this up once if you cook here often. Skip it if you’re just exploring."
+          steps={[
+            "Create an account or sign in.",
+            "Save oven offset, elevation (optional), and allergens.",
+            "List equipment you actually own.",
+            "Go back to Ask — look for the “personalized” badge on answers.",
+          ]}
+          terms={[
+            {
+              term: "Oven offset (°F)",
+              meaning:
+                "How wrong your oven dial is. Measure with an oven thermometer. If dial 350 is really 335, enter +15. Leave 0 if you don’t know.",
+            },
+            {
+              term: "Elevation (meters)",
+              meaning:
+                "How high above sea level you live. Higher = water boils cooler. Optional; leave blank at sea level or if unsure.",
+            },
+            {
+              term: "Equipment",
+              meaning:
+                "Pans and tools you own. Helps recipes prefer methods that match your gear (e.g. cast-iron sear).",
+            },
+          ]}
+        />
       </header>
 
       {authLoading && <p className="muted">Checking sign-in…</p>}
 
       {!authLoading && !user && (
-        <section className="auth-panel">
+        <section className="auth-panel panel">
           <div className="mode-tabs">
             <button
               type="button"
@@ -308,7 +337,7 @@ export default function KitchenPage() {
           {loadingKitchen ? (
             <p className="muted">Loading profile…</p>
           ) : (
-            <form className="stack-form" onSubmit={onSaveProfile}>
+            <form className="stack-form panel" onSubmit={onSaveProfile}>
               <label>
                 Oven offset (°F)
                 <span className="field-hint">

@@ -38,6 +38,14 @@ MECHANISMS = [
     ("alkalinity-tenderizing", "Surface alkalinity (velveting)",
      "A brief alkaline treatment (baking soda) raises surface pH, reducing "
      "protein bonding so thin slices stay tender under high heat."),
+    ("evaporation-concentration", "Evaporation and concentration",
+     "Simmering drives off water, concentrating dissolved flavor compounds "
+     "and thickening sauces. Too hard a boil can make reductions bitter or "
+     "reduce past the useful point."),
+    ("fat-soluble-flavor", "Fat-soluble flavor extraction",
+     "Many spice and aromatic compounds dissolve better in fat than water. "
+     "Gently heating spices in oil (blooming) releases aroma before liquid "
+     "is added."),
 ]
 
 # slug, name, summary, procedure, mistakes, foods, mechanism_slug
@@ -136,6 +144,128 @@ TECHNIQUES = [
      ],
      ["cookies", "butter cakes", "some muffins"],
      "leavening-gas"),
+    ("blanching", "Blanching",
+     "A brief boil (then ice bath) that sets color, loosens skins, or "
+     "partially cooks vegetables before finishing another way.",
+     [
+         "Bring a large pot of salted water to a rolling boil.",
+         "Add food in batches so the water returns to a boil quickly.",
+         "Cook briefly (often 30 seconds–3 minutes depending on the food).",
+         "Shock in ice water to stop cooking; drain and dry well.",
+     ],
+     [
+         "Crowding the pot so water goes lukewarm.",
+         "Skipping the ice bath — food keeps cooking and turns dull.",
+         "Under-salting the water for green vegetables.",
+     ],
+     ["green beans", "broccoli", "tomatoes (for peeling)", "nuts"],
+     "protein-denaturation"),
+    ("deglazing", "Deglazing",
+     "Adding liquid to a hot pan to dissolve browned bits (fond) into a "
+     "flavorful sauce base after searing.",
+     [
+         "After searing, pour off excess fat if needed; keep the browned bits.",
+         "Add wine, stock, or water while the pan is still hot.",
+         "Scrape the fond loose with a wooden spoon as the liquid simmers.",
+         "Reduce to concentrate, then finish with butter, mustard, or cream.",
+     ],
+     [
+         "Using a nonstick pan with no fond to dissolve.",
+         "Adding cold liquid to a scorched (burned-black) pan — bitter sauce.",
+         "Forgetting to reduce; watery, thin flavor.",
+     ],
+     ["pan sauces", "steak", "chicken", "pork chops"],
+     "evaporation-concentration"),
+    ("blooming-spices", "Blooming spices in fat",
+     "Gently frying ground or whole spices in oil or ghee so fat-soluble "
+     "aromas bloom before you add watery ingredients.",
+     [
+         "Heat a spoonful of oil or ghee over medium-low.",
+         "Add spices (and optional aromatics like garlic/ginger).",
+         "Stir 20–60 seconds until fragrant — not smoking or blackened.",
+         "Add onions, tomatoes, or liquid to stop the toasting.",
+     ],
+     [
+         "Burning spices on high heat (bitter, acrid).",
+         "Adding spices straight into a watery stew first — muted aroma.",
+     ],
+     ["curries", "chili", "sofrito-style bases", "tempered dals"],
+     "fat-soluble-flavor"),
+    ("tempering-eggs", "Tempering eggs for custards",
+     "Slowly warming beaten eggs with hot liquid so they thicken a sauce "
+     "or custard without scrambling.",
+     [
+         "Whisk eggs (or yolks) in a bowl.",
+         "Ladle a little hot milk/stock into the eggs while whisking.",
+         "Repeat until the egg mix is warm, then return everything to the pot.",
+         "Cook gently, stirring, until it coats a spoon; do not boil.",
+     ],
+     [
+         "Dumping cold eggs into boiling liquid — scrambled bits.",
+         "Boiling after combining — curdled custard.",
+     ],
+     ["pastry cream", "ice cream base", "avgolemono", "carbonara-style sauces"],
+     "protein-denaturation"),
+    ("resting-meat", "Resting meat after cooking",
+     "Letting cooked meat sit so juices redistribute and carryover heat "
+     "finishes the center gently.",
+     [
+         "Pull meat a few degrees under your final target if carryover is expected.",
+         "Tent loosely with foil (or leave uncovered for a crisp crust).",
+         "Rest: ~5 minutes for steaks/chops, 15–30 for large roasts.",
+         "Slice against the grain just before serving.",
+     ],
+     [
+         "Slicing immediately — juices flood the cutting board.",
+         "Wrapping tightly in foil for ages — steamed, soggy crust.",
+     ],
+     ["steak", "roast chicken", "pork loin", "lamb"],
+     "protein-denaturation"),
+    ("reduction", "Sauce reduction",
+     "Simmering a liquid uncovered so water evaporates and flavor "
+     "concentrates into a glossy, clingy sauce.",
+     [
+         "Start with stock, wine, or pan juices in a wide pan (more surface = faster).",
+         "Simmer gently, not a furious boil.",
+         "Taste as it thickens; stop when flavor is intense but not salty-bitter.",
+         "Finish off heat with cold butter or oil for shine if desired.",
+     ],
+     [
+         "Reducing so far it tastes harsh or overly salty.",
+         "Covering the pan — steam can’t escape, so it won’t reduce.",
+     ],
+     ["pan sauces", "demi-glace style bases", "glazes", "soups"],
+     "evaporation-concentration"),
+    ("folding-whites", "Folding whipped egg whites",
+     "Gently combining airy foam into a heavier batter so you keep lift "
+     "instead of knocking the gas out.",
+     [
+         "Whip whites to soft or stiff peaks as the recipe requires.",
+         "Stir a spoonful of foam into the batter to loosen it.",
+         "Add the rest; cut down through the middle, scrape the bowl, and fold over.",
+         "Stop as soon as streaks mostly disappear — a few white streaks are fine.",
+     ],
+     [
+         "Stirring or beating vigorously — deflates the foam.",
+         "Overfolding until the batter looks soup-thin.",
+     ],
+     ["soufflés", "chiffon cake", "mousse", "some pancakes"],
+     "leavening-gas"),
+    ("breading-dredging", "Breading / dredging",
+     "Building a dry–wet–dry coat so crumbs stick and fry into a crisp crust.",
+     [
+         "Pat food dry.",
+         "Dust in flour (shake off excess).",
+         "Dip in beaten egg or buttermilk.",
+         "Press into breadcrumbs or seasoned flour; rest a few minutes so the coat sets.",
+         "Fry or bake; don’t flip until the crust releases cleanly.",
+     ],
+     [
+         "Skipping the flour step — egg slides off.",
+         "Soggy crumbs from wet food or oil that isn’t hot enough.",
+     ],
+     ["cutlets", "fried chicken", "fish fillets", "onion rings"],
+     "maillard-browning"),
 ]
 
 

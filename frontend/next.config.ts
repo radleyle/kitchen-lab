@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Monorepo: avoid Next picking the repo-root lockfile as the workspace root.
   outputFileTracingRoot: path.join(__dirname),
+  // Native browser cross-fade between routes (progressive enhancement).
+  experimental: {
+    viewTransition: true,
+  },
 };
 
 export default nextConfig;
