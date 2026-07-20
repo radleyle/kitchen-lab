@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
 
+    # Unsplash Access Key for recipe cover photos (optional — stock fallback if empty).
+    unsplash_access_key: str = ""
+
     # Photo storage: "local" (Compose) or "s3" (ECS).
     storage_backend: str = "local"
     media_root: str = "media"

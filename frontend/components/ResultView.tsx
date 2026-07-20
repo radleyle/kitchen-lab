@@ -1,5 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import {
+  CitationList,
+  SafetyPanel,
+  TrustStrip,
+  parseCitations,
+  parseSafety,
+} from "@/components/trust";
+
 type Props = {
   mode: string;
   result: Record<string, unknown>;
@@ -12,35 +21,6 @@ type Props = {
 
 function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
-}
-
-function CitationList({ citations }: { citations: unknown }) {
-  if (!Array.isArray(citations) || citations.length === 0) return null;
-  return (
-    <div className="citations">
-      <h4>Sources</h4>
-      <ul>
-        {citations.map((c, i) => {
-          const cit = c as {
-            claim?: string;
-            confidence?: string;
-            source?: { title?: string; author?: string };
-          };
-          return (
-            <li key={i}>
-              <span className="cit-claim">{cit.claim}</span>
-              {cit.source?.title && (
-                <span className="cit-src">
-                  — {cit.source.title}
-                  {cit.confidence ? ` (${cit.confidence})` : ""}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
 }
 
 function Layers({
@@ -107,6 +87,13 @@ function Meta({
   );
 }
 
+function experimentDesignHref(cause: string, symptom?: string): string {
+  const q = symptom
+    ? `Test whether ${cause} is why ${symptom} — fair A/B with one variable`
+    : `Test whether ${cause} is the real cause — fair A/B kitchen experiment`;
+  return `/lab?design=${encodeURIComponent(q)}#experiments`;
+}
+
 export function ResultView({
   mode,
   result,
@@ -121,15 +108,27 @@ export function ResultView({
     typeof result.action === "string" ||
     typeof result.sufficient === "boolean"
   ) {
+    const citations = result.citations;
+    const safety = parseSafety(result.safety);
+    const citeCount = parseCitations(citations).length;
     return (
       <div className="result-block">
         <Meta mode={mode} handler={handler} personalized={personalized} />
+        <TrustStrip
+          signals={{
+            citationCount: citeCount,
+            hasSafety: safety != null,
+            personalized,
+            grounded: result.sufficient === true,
+          }}
+        />
+        <SafetyPanel safety={safety} />
         <Layers
           action={asString(result.action)}
           reason={asString(result.reason)}
           science={asString(result.science)}
           caveats={asString(result.caveats)}
-          citations={result.citations}
+          citations={citations}
         />
       </div>
     );
@@ -159,7 +158,9 @@ export function ResultView({
         personalized={personalized}
         symptomDescription={symptom?.description ?? ""}
         questions={questions}
-        causes={result.candidate_causes as { cause: string; prior_score: number }[]}
+        causes={
+          result.candidate_causes as { cause: string; prior_score: number }[]
+        }
         onSubmit={onDiagnoseAnswers}
         busy={diagnosing}
       />
@@ -175,10 +176,29 @@ export function ResultView({
       key_evidence?: string;
     };
     const fix = (result.fix as Record<string, unknown>) || {};
-    const ranked = (result.ranked_causes as { cause: string; score: number }[]) || [];
+    const ranked =
+      (result.ranked_causes as {
+        cause: string;
+        score: number;
+        evidence_verdicts?: string[];
+        key_evidence?: string;
+      }[]) || [];
+    const safety = parseSafety(fix.safety);
+    const citeCount = parseCitations(fix.citations).length;
+    const symptom = result.symptom as { description?: string } | undefined;
+    const cause = diagnosis.most_likely_cause ?? "this cause";
+
     return (
       <div className="result-block">
         <Meta mode={mode} handler="diagnosis" personalized={personalized} />
+        <TrustStrip
+          signals={{
+            citationCount: citeCount,
+            hasSafety: safety != null,
+            personalized,
+            grounded: true,
+          }}
+        />
         <section className="diagnosis-verdict">
           <h3>Most likely</h3>
           <p className="verdict-cause">{diagnosis.most_likely_cause}</p>
@@ -189,6 +209,14 @@ export function ResultView({
               ? ` · Evidence: “${diagnosis.key_evidence}”`
               : ""}
           </p>
+          <p className="diagnose-next">
+            <Link
+              href={experimentDesignHref(cause, symptom?.description)}
+              className="text-btn diagnose-exp-link"
+            >
+              Design an A/B experiment for this →
+            </Link>
+          </p>
         </section>
         {ranked.length > 0 && (
           <section>
@@ -198,11 +226,19 @@ export function ResultView({
                 <li key={r.cause}>
                   <strong>{r.cause}</strong>
                   <span className="muted"> · score {r.score}</span>
+                  {Array.isArray(r.evidence_verdicts) &&
+                    r.evidence_verdicts.length > 0 && (
+                      <p className="muted evidence-list">
+                        Evidence: {r.evidence_verdicts.join(" · ")}
+                        {r.key_evidence ? ` — “${r.key_evidence}”` : ""}
+                      </p>
+                    )}
                 </li>
               ))}
             </ol>
           </section>
         )}
+        <SafetyPanel safety={safety} />
         <Layers
           action={asString(fix.action)}
           reason={asString(fix.reason)}
@@ -224,25 +260,41 @@ export function ResultView({
       target_internal_temp_c?: number | null;
       citations?: unknown;
     }[];
-    const ingredients = (result.ingredients as {
-      ingredient: string;
-      grams?: number | null;
-      amount?: string;
-    }[]) || [];
-    const kitchen = result.kitchen as { notes?: string[]; dietary_conflicts?: unknown[] } | undefined;
-    const overrides = result.safety_overrides as unknown[];
+    const ingredients =
+      (result.ingredients as {
+        ingredient: string;
+        grams?: number | null;
+        amount?: string;
+      }[]) || [];
+    const kitchen = result.kitchen as
+      | { notes?: string[]; dietary_conflicts?: unknown[] }
+      | undefined;
+    const overrides = result.safety_overrides;
+    const safety = parseSafety(result.safety);
+    const citeCount = steps.reduce(
+      (n, s) => n + parseCitations(s.citations).length,
+      0,
+    );
 
     return (
       <div className="result-block">
         <Meta mode={mode} handler={handler} personalized={personalized} />
+        <TrustStrip
+          signals={{
+            citationCount: citeCount,
+            hasSafety: safety != null,
+            safetyEnforced:
+              Array.isArray(overrides) && overrides.length > 0,
+            personalized:
+              personalized ||
+              Boolean(kitchen?.notes?.length) ||
+              Boolean(kitchen?.dietary_conflicts?.length),
+            grounded: Boolean(result.grounding_note),
+          }}
+        />
         <h2 className="recipe-title">{asString(result.title)}</h2>
         <p>{asString(result.description)}</p>
-        {Array.isArray(overrides) && overrides.length > 0 && (
-          <p className="safety-banner">
-            Safety floor applied — an internal temperature was raised to meet
-            USDA guidance.
-          </p>
-        )}
+        <SafetyPanel safety={safety} overrides={overrides} />
         <h3>Ingredients</h3>
         <ul className="ingredients">
           {ingredients.map((ing, i) => (
@@ -266,6 +318,11 @@ export function ResultView({
               {s.visual_cues && (
                 <p className="muted">Look for: {s.visual_cues}</p>
               )}
+              {s.target_internal_temp_c != null && (
+                <p className="temp-chip">
+                  Target internal: {s.target_internal_temp_c}°C · code-checked
+                </p>
+              )}
               <CitationList citations={s.citations} />
             </li>
           ))}
@@ -281,24 +338,35 @@ export function ResultView({
           </section>
         )}
         <p className="muted grounding">{asString(result.grounding_note)}</p>
+        <p className="muted">
+          Want what-if sliders on servings and brine? Open this on{" "}
+          <Link href="/recipes">Recipes</Link>.
+        </p>
       </div>
     );
   }
 
   // Substitution
   if (result.found === true && (result.options || result.options_by_function)) {
-    const options = (result.options as {
-      substitute: string;
-      ratio: number;
-      texture_notes?: string;
-      procedure_adjustments?: string;
-      confidence?: string;
-      excluded_by_diet?: unknown;
-    }[]) || [];
+    const options =
+      (result.options as {
+        substitute: string;
+        ratio: number;
+        texture_notes?: string;
+        procedure_adjustments?: string;
+        confidence?: string;
+        excluded_by_diet?: unknown;
+      }[]) || [];
     const fn = result.function as { name?: string; description?: string } | null;
     return (
       <div className="result-block">
         <Meta mode={mode} handler="substitution" personalized={personalized} />
+        <TrustStrip
+          signals={{
+            personalized,
+            calculatorHint: true,
+          }}
+        />
         <p>
           Replacing <strong>{asString(result.ingredient)}</strong>
           {fn?.name ? (
@@ -359,22 +427,33 @@ export function ResultView({
     return (
       <div className="result-block">
         <Meta mode={mode} handler="experiment" personalized={personalized} />
+        <TrustStrip
+          signals={{
+            personalized,
+            grounded: true,
+          }}
+        />
         <h3>Question</h3>
         <p>{asString(result.question)}</p>
         <h3>Hypothesis</h3>
         <p>{asString(result.hypothesis)}</p>
         <h3>Independent variable</h3>
         <p>{asString(result.independent_variable)}</p>
-        <h3>Trials</h3>
-        <ul>
+        <h3>A / B trials</h3>
+        <div className="ab-preview">
           {trials.map((t) => (
-            <li key={t.label}>
-              <strong>{t.label}</strong> — {t.variable_value}
-            </li>
+            <div key={t.label} className="ab-column">
+              <strong>{t.label}</strong>
+              <p>{t.variable_value}</p>
+            </div>
           ))}
-        </ul>
+        </div>
         {result.persisted ? (
-          <p className="muted">Saved as experiment #{String(result.experiment_id)}</p>
+          <p className="muted">
+            Saved as experiment #{String(result.experiment_id)}. Open{" "}
+            <Link href="/lab#experiments">Lab → Experiments</Link> to run the
+            comparison.
+          </p>
         ) : (
           <p className="muted">{asString(result.note)}</p>
         )}
@@ -410,9 +489,20 @@ function DiagnoseForm({
   busy?: boolean;
 }) {
   return (
-    <div className="result-block">
+    <div className="result-block diagnose-hero">
       <Meta mode={mode} handler={handler} personalized={personalized} />
-      <h3>Matched: {symptomDescription}</h3>
+      <TrustStrip
+        signals={{
+          personalized,
+          grounded: true,
+        }}
+      />
+      <h3 className="diagnose-match">Matched symptom</h3>
+      <p className="verdict-cause">{symptomDescription}</p>
+      <p className="field-hint">
+        Answer a few questions so we can rank causes with evidence — not vibes.
+        After the verdict you can spin up an A/B experiment in the Lab.
+      </p>
       {causes && causes.length > 0 && (
         <p className="muted">
           Starting suspects:{" "}

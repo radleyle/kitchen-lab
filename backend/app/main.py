@@ -22,6 +22,7 @@ from app.routers import (
     experiments,
     kitchen,
     knowledge,
+    mechanisms,
     notebook,
     recipes,
     safety,
@@ -40,6 +41,7 @@ app.include_router(diagnose.router)
 app.include_router(experiments.router)
 app.include_router(kitchen.router)
 app.include_router(knowledge.router)
+app.include_router(mechanisms.router)
 app.include_router(notebook.router)
 app.include_router(recipes.router)
 app.include_router(substitute.router)

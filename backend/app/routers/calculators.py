@@ -4,7 +4,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.calculators.baking import bakers_percentages, hydration_percent
-from app.calculators.brine import salt_for_brine, salt_grams_to_tbsp
+from app.calculators.brine import (
+    equilibrium_salt,
+    salt_for_brine,
+    salt_grams_to_tbsp,
+)
 from app.calculators.scaling import scale_recipe
 from app.calculators.units import volume_to_grams
 
@@ -25,6 +29,31 @@ def brine(body: BrineRequest) -> dict:
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"salt_g": grams, "salt_tbsp": tbsp, "salt_type": body.salt_type}
+
+
+class EquilibriumSaltRequest(BaseModel):
+    total_mass_g: float = Field(
+        gt=0,
+        description="Meat + water mass in grams for equilibrium brining",
+    )
+    target_percent: float = Field(default=2.0, gt=0, le=5)
+    salt_type: str = "table_salt"
+
+
+@router.post("/equilibrium-salt")
+def equilibrium(body: EquilibriumSaltRequest) -> dict:
+    """Salt for dry-brine / equilibrium style: % of total mass, not water alone."""
+    try:
+        grams = equilibrium_salt(body.total_mass_g, body.target_percent)
+        tbsp = salt_grams_to_tbsp(grams, body.salt_type)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {
+        "salt_g": grams,
+        "salt_tbsp": tbsp,
+        "salt_type": body.salt_type,
+        "target_percent": body.target_percent,
+    }
 
 
 class ScaleRequest(BaseModel):

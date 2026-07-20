@@ -5,9 +5,13 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   createNotebookEntry,
   deleteNotebookEntry,
+  getMechanism,
   getTechnique,
+  listMechanisms,
   listNotebook,
   listTechniques,
+  type MechanismDetail,
+  type MechanismSummary,
   type NotebookEntry,
   type TechniqueDetail,
   type TechniqueSummary,
@@ -15,6 +19,7 @@ import {
 import { ExperimentsPanel } from "@/components/ExperimentsPanel";
 import { FeatureGuide } from "@/components/FeatureGuide";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/lib/confirm";
 
 function asTextList(items: unknown[]): string[] {
   return items.map((item) => {
@@ -33,10 +38,18 @@ function asTextList(items: unknown[]): string[] {
 
 export default function LabPage() {
   const { user, loading: authLoading } = useAuth();
+  const confirm = useConfirm();
   const [techniques, setTechniques] = useState<TechniqueSummary[]>([]);
   const [techError, setTechError] = useState<string | null>(null);
   const [selected, setSelected] = useState<TechniqueDetail | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
+
+  const [mechanisms, setMechanisms] = useState<MechanismSummary[]>([]);
+  const [mechError, setMechError] = useState<string | null>(null);
+  const [selectedMech, setSelectedMech] = useState<MechanismDetail | null>(
+    null,
+  );
+  const [mechBusy, setMechBusy] = useState(false);
 
   const [notes, setNotes] = useState<NotebookEntry[]>([]);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -50,6 +63,13 @@ export default function LabPage() {
       .catch((err) =>
         setTechError(
           err instanceof Error ? err.message : "Could not load techniques",
+        ),
+      );
+    listMechanisms()
+      .then(setMechanisms)
+      .catch((err) =>
+        setMechError(
+          err instanceof Error ? err.message : "Could not load mechanisms",
         ),
       );
   }, []);
@@ -82,6 +102,20 @@ export default function LabPage() {
     }
   }
 
+  async function openMechanism(slug: string) {
+    setMechBusy(true);
+    setMechError(null);
+    try {
+      setSelectedMech(await getMechanism(slug));
+    } catch (err) {
+      setMechError(
+        err instanceof Error ? err.message : "Could not load mechanism",
+      );
+    } finally {
+      setMechBusy(false);
+    }
+  }
+
   async function onCreateNote(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -103,6 +137,13 @@ export default function LabPage() {
   }
 
   async function onDeleteNote(id: number) {
+    const ok = await confirm({
+      title: "Delete note?",
+      message: "This notebook entry will be removed permanently.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     setNoteError(null);
     try {
       await deleteNotebookEntry(id);
@@ -115,47 +156,122 @@ export default function LabPage() {
   }
 
   return (
-    <main className="lab-page">
-      <header className="page-banner">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/bread.jpg" alt="" className="page-banner-media" />
-        <div className="page-banner-scrim" aria-hidden />
-        <div className="page-banner-content shell">
-          <h1>Lab</h1>
-          <p className="lede">
-            Practice room: proven methods, fair kitchen tests, and your notes.
-          </p>
-        </div>
+    <main className="shell lab-page">
+      <header className="page-header">
+        <h1>Lab</h1>
+        <p className="lede">
+          Practice room: science ideas, proven methods, fair A/B tests, and your
+          notes.
+        </p>
       </header>
 
-      <div className="shell">
-        <nav className="lab-jump" aria-label="Lab sections">
-          <a href="#techniques">Techniques</a>
-          <a href="#experiments">Experiments</a>
-          <a href="#notebook">Notebook</a>
-        </nav>
+      <nav className="lab-jump" aria-label="Lab sections">
+        <a href="#mechanisms">Mechanisms</a>
+        <a href="#techniques">Techniques</a>
+        <a href="#experiments">Experiments</a>
+        <a href="#notebook">Notebook</a>
+      </nav>
+      <FeatureGuide
+        title="What is the Lab?"
+        summary="Ask is for conversation. Lab is for reference and practice — like a textbook chapter plus a notebook."
+        when="Come here when you want to study a science idea, learn a method, compare two ways of cooking, or write down what worked at home."
+        steps={[
+          "Mechanisms — browse the science library (Maillard, gelatinization…). Each card lists techniques that use it.",
+          "Techniques — curated methods (velveting, dry-brining…) with steps + common mistakes.",
+          "Experiments — describe a question; we draft a fair A/B test. You cook, log notes/photos, then conclude.",
+          "Notebook — free-form notes for yourself (sign-in required).",
+        ]}
+        terms={[
+          {
+            term: "Mechanism",
+            meaning:
+              "The science idea behind a technique (e.g. Maillard browning = the browning/flavor reaction on a hot, dry surface).",
+          },
+          {
+            term: "Independent variable",
+            meaning:
+              "The one thing you change in an experiment (rest time, salt timing…). Everything else stays the same so the comparison is fair.",
+          },
+        ]}
+      />
+
+      <section
+        id="mechanisms"
+        className="lab-section"
+        aria-labelledby="mech-heading"
+      >
+        <h2 id="mech-heading">Mechanism library</h2>
         <FeatureGuide
-          title="What is the Lab?"
-          summary="Ask is for conversation. Lab is for reference and practice — like a cookbook chapter plus a notebook."
-          when="Come here when you want to study a method, compare two ways of cooking, or write down what worked at home."
+          title="How to use Mechanisms"
+          summary="First-class science browse — the ideas under the techniques, not just recipe tips."
+          when="When you want to understand why something works (browning, thickening, emulsions) before memorizing steps."
           steps={[
-            "Techniques — browse curated methods (velveting, dry-brining…). Click one to see steps + the science idea.",
-            "Experiments — describe a question; we draft a fair test. You cook, log notes/photos, then conclude.",
-            "Notebook — free-form notes for yourself (sign-in required).",
-          ]}
-          terms={[
-            {
-              term: "Mechanism",
-              meaning:
-                "The science idea behind a technique (e.g. Maillard browning = the browning/flavor reaction on a hot, dry surface).",
-            },
-            {
-              term: "Independent variable",
-              meaning:
-                "The one thing you change in an experiment (rest time, salt timing…). Everything else stays the same so the comparison is fair.",
-            },
+            "Scan the library and open a mechanism.",
+            "Read the explanation.",
+            "Jump into a linked technique to practice the procedure.",
           ]}
         />
+        {mechError && <p className="error">{mechError}</p>}
+        {mechanisms.length === 0 && !mechError && (
+          <p className="muted">Loading mechanisms…</p>
+        )}
+        <div className="tech-layout">
+          <ul className="mech-grid">
+            {mechanisms.map((m) => (
+              <li key={m.slug}>
+                <button
+                  type="button"
+                  className={
+                    selectedMech?.slug === m.slug
+                      ? "tech-btn active"
+                      : "tech-btn"
+                  }
+                  onClick={() => openMechanism(m.slug)}
+                  disabled={mechBusy}
+                >
+                  <strong>{m.name}</strong>
+                  <span className="muted">
+                    {m.explanation.length > 120
+                      ? `${m.explanation.slice(0, 120)}…`
+                      : m.explanation}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {selectedMech && (
+            <article className="tech-detail mech-detail">
+              <h3>{selectedMech.name}</h3>
+              <p>{selectedMech.explanation}</p>
+              <h4>Techniques that use this</h4>
+              {selectedMech.techniques.length === 0 ? (
+                <p className="muted">No techniques linked yet.</p>
+              ) : (
+                <ul className="mech-tech-links">
+                  {selectedMech.techniques.map((t) => (
+                    <li key={t.slug}>
+                      <button
+                        type="button"
+                        className="text-btn"
+                        onClick={() => {
+                          void openTechnique(t.slug);
+                          document
+                            .getElementById("techniques")
+                            ?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        {t.name}
+                      </button>
+                      <span className="muted"> — {t.summary}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          )}
+        </div>
+      </section>
 
       <section
         id="techniques"
@@ -331,7 +447,6 @@ export default function LabPage() {
           </>
         )}
       </section>
-      </div>
     </main>
   );
 }

@@ -13,6 +13,7 @@ import {
   type ProfileUpsert,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/lib/confirm";
 
 const EQUIPMENT_KINDS = [
   "skillet",
@@ -37,12 +38,33 @@ const ALLERGENS: { id: string; label: string }[] = [
   { id: "sesame", label: "Sesame" },
 ];
 
+/** General home-cuisine tags — not Vietnam-only. */
+const HOME_CUISINES: { id: string; label: string }[] = [
+  { id: "vietnamese", label: "Vietnamese" },
+  { id: "korean", label: "Korean" },
+  { id: "japanese", label: "Japanese" },
+  { id: "chinese", label: "Chinese" },
+  { id: "thai", label: "Thai" },
+  { id: "indian", label: "Indian" },
+  { id: "italian", label: "Italian" },
+  { id: "mexican", label: "Mexican" },
+  { id: "french", label: "French" },
+  { id: "middle_eastern", label: "Middle Eastern" },
+  { id: "american", label: "American" },
+];
+
+type AuthenticityMode = "home" | "adapted" | "flexible";
+
 type FormState = {
   oven_offset_f: number;
   cooktop_type: string;
   elevation_m: string;
   measurement_system: "us" | "metric";
   allergens: string[];
+  home_cuisines: string[];
+  authenticity_mode: AuthenticityMode;
+  /** Keep other preference keys we don't edit in this form. */
+  otherPreferences: Record<string, unknown>;
 };
 
 const emptyForm: FormState = {
@@ -51,6 +73,9 @@ const emptyForm: FormState = {
   elevation_m: "",
   measurement_system: "us",
   allergens: [],
+  home_cuisines: [],
+  authenticity_mode: "flexible",
+  otherPreferences: {},
 };
 
 function profileToForm(p: KitchenProfile | null): FormState {
@@ -58,6 +83,17 @@ function profileToForm(p: KitchenProfile | null): FormState {
   const allergens = Array.isArray(p.dietary_restrictions?.allergens)
     ? p.dietary_restrictions.allergens.map(String)
     : [];
+  const prefs = p.preferences ?? {};
+  const home_cuisines = Array.isArray(prefs.home_cuisines)
+    ? prefs.home_cuisines.map(String)
+    : [];
+  const mode = String(prefs.authenticity_mode || "flexible");
+  const authenticity_mode: AuthenticityMode =
+    mode === "home" || mode === "adapted" || mode === "flexible"
+      ? mode
+      : "flexible";
+  const { home_cuisines: _hc, authenticity_mode: _am, ...otherPreferences } =
+    prefs;
   return {
     oven_offset_f: p.oven_offset_f,
     cooktop_type: p.cooktop_type ?? "",
@@ -65,11 +101,15 @@ function profileToForm(p: KitchenProfile | null): FormState {
     measurement_system:
       p.measurement_system === "metric" ? "metric" : "us",
     allergens,
+    home_cuisines,
+    authenticity_mode,
+    otherPreferences,
   };
 }
 
 export default function KitchenPage() {
   const { user, loading: authLoading, login, refresh } = useAuth();
+  const confirm = useConfirm();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -154,10 +194,16 @@ export default function KitchenPage() {
             : Number(form.elevation_m),
         measurement_system: form.measurement_system,
         dietary_restrictions: { allergens: form.allergens },
-        preferences: {},
+        preferences: {
+          ...form.otherPreferences,
+          home_cuisines: form.home_cuisines,
+          authenticity_mode: form.authenticity_mode,
+        },
       };
       await upsertProfile(body);
-      setProfileMsg("Kitchen profile saved. Asks will use it when you’re signed in.");
+      setProfileMsg(
+        "Kitchen profile saved. Recipes and Ask will use your home-cuisine preference when you’re signed in.",
+      );
     } catch (err) {
       setProfileError(
         err instanceof Error ? err.message : "Could not save profile",
@@ -173,6 +219,15 @@ export default function KitchenPage() {
       allergens: f.allergens.includes(name)
         ? f.allergens.filter((a) => a !== name)
         : [...f.allergens, name],
+    }));
+  }
+
+  function toggleCuisine(id: string) {
+    setForm((f) => ({
+      ...f,
+      home_cuisines: f.home_cuisines.includes(id)
+        ? f.home_cuisines.filter((c) => c !== id)
+        : [...f.home_cuisines, id],
     }));
   }
 
@@ -209,6 +264,13 @@ export default function KitchenPage() {
 
   async function onDeleteEquipment(id: number) {
     if (eqBusy) return;
+    const ok = await confirm({
+      title: "Remove equipment?",
+      message: "This gear will be removed from your kitchen profile.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     setEqError(null);
     setEqMsg(null);
     setEqBusy(true);
@@ -258,6 +320,11 @@ export default function KitchenPage() {
               term: "Equipment",
               meaning:
                 "Pans and tools you own. Helps recipes prefer methods that match your gear (e.g. cast-iron sear).",
+            },
+            {
+              term: "Home cuisines + authenticity",
+              meaning:
+                "Which food cultures are “home” for you (Vietnamese, Korean, Italian…). Home/traditional steers recipes toward homeland flavor; Adapted allows diaspora/weeknight shortcuts — for every cuisine, not just one.",
             },
           ]}
         />
@@ -414,6 +481,74 @@ export default function KitchenPage() {
                   ))}
                 </div>
               </fieldset>
+
+              <fieldset className="allergen-set">
+                <legend>Home cuisines</legend>
+                <p className="field-hint">
+                  Cuisines where you care about taste-of-home — Vietnamese,
+                  Korean, Italian, Indian, and so on. Pick as many as you want.
+                </p>
+                <div className="allergen-grid">
+                  {HOME_CUISINES.map((c) => (
+                    <label key={c.id} className="check">
+                      <input
+                        type="checkbox"
+                        checked={form.home_cuisines.includes(c.id)}
+                        onChange={() => toggleCuisine(c.id)}
+                      />
+                      {c.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="allergen-set">
+                <legend>When cooking those cuisines</legend>
+                <p className="field-hint">
+                  Same idea for every cuisine: home flavor vs adapted for where
+                  you live now.
+                </p>
+                <div className="authenticity-options">
+                  {(
+                    [
+                      {
+                        id: "home" as const,
+                        label: "Home / traditional",
+                        hint: "Prefer homeland home-kitchen practice, not restaurant-abroad shortcuts.",
+                      },
+                      {
+                        id: "adapted" as const,
+                        label: "Adapted for where I live",
+                        hint: "Keep the spirit, allow practical pantry substitutions — and say when you shortcut.",
+                      },
+                      {
+                        id: "flexible" as const,
+                        label: "No strong preference",
+                        hint: "Don’t steer authenticity either way.",
+                      },
+                    ] as const
+                  ).map((opt) => (
+                    <label key={opt.id} className="authenticity-option">
+                      <input
+                        type="radio"
+                        name="authenticity_mode"
+                        checked={form.authenticity_mode === opt.id}
+                        onChange={() =>
+                          setForm((f) => ({
+                            ...f,
+                            authenticity_mode: opt.id,
+                          }))
+                        }
+                      />
+                      <span>
+                        <strong>{opt.label}</strong>
+                        <span className="field-hint">{opt.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               {profileError && <p className="error">{profileError}</p>}
               {profileMsg && <p className="ok">{profileMsg}</p>}
               <button type="submit" disabled={profileBusy}>

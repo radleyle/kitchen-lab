@@ -119,6 +119,35 @@ SOURCES = {
         "published_at": date(2025, 6, 1),
         "reviewed_at": date(2026, 7, 16),
     },
+    # H Woo Lee (hwoolee.com): elevated home cooking / "Cooking for Myself".
+    # One source per article URL so citations deep-link. Culinary practice.
+    "hwl_site": {
+        "title": "H Woo Lee — Cooking for Myself (hwoolee.com)",
+        "author": "H Woo Lee",
+        "url": "https://www.hwoolee.com/",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2024, 1, 1),
+        "reviewed_at": date(2026, 7, 19),
+    },
+    "hwl_steakhouse_burger": {
+        "title": "Owen Han's Steakhouse Burger",
+        "author": "H Woo Lee",
+        "url": "https://www.hwoolee.com/recipes/owen-hans-steakhouse-burger",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2024, 1, 1),
+        "reviewed_at": date(2026, 7, 19),
+    },
+    "hwl_bone_marrow_pappardelle": {
+        "title": "Bone Marrow Pappardelle (H Woo Lee recipe published via Modern Luxury)",
+        "author": "H Woo Lee",
+        "url": "https://www.modernluxury.com/how-to-make-bone-marrow-pappardelle/",
+        "source_type": "article",
+        "authority_level": "culinary",
+        "published_at": date(2022, 1, 1),
+        "reviewed_at": date(2026, 7, 19),
+    },
 }
 
 # (source_key, claim, content, scope, confidence)
@@ -531,6 +560,79 @@ PASSAGES = [
      "hide a gummy center. An instant-read thermometer settles it.",
      "Breads and cakes; target temperature varies by style.",
      "high"),
+    # ================= H WOO LEE / hwoolee.com (added July 2026) =================
+    ("hwl_site",
+     "H Woo Lee teaches restaurant-caliber technique scaled for cooking for yourself at home.",
+     "H Woo Lee's site (hwoolee.com) and Cooking for Myself series focus on "
+     "bringing fine-dining moves -- arrosé basting, sauce reductions to nappe, "
+     "careful fat work, fermented pantry flavors -- into a solo home kitchen. "
+     "The teaching style is procedural and sensory (what to listen for and look "
+     "for), not restaurant brigade scale.",
+     "Home cooks adapting restaurant techniques; not a food-safety authority.",
+     "medium"),
+    ("hwl_steakhouse_burger",
+     "Salt ground-beef patties only right before cooking so salt does not loosen the mix.",
+     "On thick steakhouse-style burgers, H Woo Lee holds salt until the pan is "
+     "hot and cooking is about to start. Salt dissolves muscle proteins and "
+     "pulls free water; if that happens while the patty sits, the grind can "
+     "loosen and steam instead of sear. Season both faces immediately before "
+     "they hit the pan.",
+     "Loose ground-beef or dry-aged beef patties formed ahead; not a rule for "
+     "dry-brined whole steaks.",
+     "medium"),
+    ("hwl_steakhouse_burger",
+     "Baste a burger like a steak: after the flip, spoon butter, bone marrow, garlic, and thyme over the patty.",
+     "After searing the first side, flip the patty, lower to medium, and add "
+     "butter, diced bone marrow, smashed garlic, and thyme. Spoon the melting "
+     "fats repeatedly over the top (arrosé). The marrow and butter baste "
+     "builds a steakhouse crust and flavor while the second side finishes -- "
+     "treating the burger as a thick steak, not a thin smash.",
+     "Thick (about 1/2 lb) pan-seared patties; needs rendered fat in the pan.",
+     "medium"),
+    ("hwl_steakhouse_burger",
+     "A lid plus residual heat makes a mini oven that finishes thick burgers without a raw center.",
+     "After basting, lay cheese on the patty, cover the pan, and turn the heat "
+     "off for 2-3 minutes. Trapped steam and residual heat cook the thick "
+     "center through to medium while melting the cheese -- essential because "
+     "a hard sear alone often leaves a thick burger underdone inside.",
+     "Thick pan burgers aiming for medium; still verify safety with a "
+     "thermometer for ground beef (USDA 160F / 71C if following agency guidance).",
+     "medium"),
+    ("hwl_steakhouse_burger",
+     "Reduce pan sauces to nappe (coats a spoon) before mounting cream or mayo.",
+     "For the au poivre mayo base, H Woo Lee reduces shallot-pepper-cognac "
+     "stock until nappe -- thick enough to coat the back of a spoon -- then "
+     "adds cream and reduces to nappe again before cooling and folding into "
+     "mayonnaise. Hitting nappe twice concentrates flavor and keeps the final "
+     "mayo from turning watery.",
+     "Peppercorn / pan reductions destined for cold emulsified sauces.",
+     "medium"),
+    ("hwl_steakhouse_burger",
+     "For home grinding, freeze grinder parts and grind on a medium die for a steakhouse patty.",
+     "When grinding your own blend, freeze the grinder attachments first and "
+     "grind on a medium die. Cold metal keeps fat solid so it cuts cleanly "
+     "instead of smearing; a medium die gives a steakhouse bite rather than "
+     "a paste.",
+     "Home-ground beef blends for thick burgers.",
+     "medium"),
+    ("hwl_bone_marrow_pappardelle",
+     "Soak split marrow bones overnight in salted water to draw out blood and impurities before roasting.",
+     "H Woo Lee's bone marrow prep starts with an overnight fridge soak: "
+     "dissolve fine salt in water, submerge split femur bones, and chill. "
+     "The brine pulls blood and impurities from the marrow cavities so the "
+     "roast tastes clean rather than metallic. Drain, dry, oil, season, then "
+     "roast hot (about 450F / 232C) until the marrow is soft and spoonable.",
+     "Split beef marrow bones for roasting into pasta or toast; not a "
+     "food-safety kill step by itself.",
+     "medium"),
+    ("hwl_bone_marrow_pappardelle",
+     "Red wine in fresh pasta dough tints and flavors the sheets before the sauce even starts.",
+     "For red-wine pappardelle, wine joins the wet mix (eggs, oil, wine) before "
+     "the flour -- staining the dough and carrying Cabernet notes into every "
+     "strand. The pasta itself becomes part of the wine story, not only the "
+     "pan sauce later.",
+     "Fresh egg pasta where a tinted, wine-scented dough is the goal.",
+     "medium"),
 ]
 
 

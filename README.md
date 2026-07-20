@@ -67,6 +67,8 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 # 1. Secrets (gitignored)
 cp .env.example .env
 # Edit .env and set OPENAI_API_KEY=...
+# Optional: UNSPLASH_ACCESS_KEY=... for related recipe cover photos
+# (without it, cookbook cards use local stock images).
 
 # 2. Start the stack
 docker compose up --build

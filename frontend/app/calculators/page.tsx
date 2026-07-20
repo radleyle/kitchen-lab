@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { FeatureGuide } from "@/components/FeatureGuide";
 import {
   calcBakersPercentages,
   calcBrine,
+  calcEquilibriumSalt,
   calcScale,
   calcVolumeToGrams,
 } from "@/lib/api";
@@ -37,17 +38,22 @@ const INGREDIENTS = [
 type ScaleRow = { name: string; amount: string; unit: string };
 
 export default function CalculatorsPage() {
-  // Brine
+  // Brine (live slider)
   const [waterG, setWaterG] = useState("1000");
-  const [brinePct, setBrinePct] = useState("5");
+  const [brinePct, setBrinePct] = useState(5);
   const [saltType, setSaltType] = useState("table_salt");
   const [brineResult, setBrineResult] = useState<string | null>(null);
   const [brineError, setBrineError] = useState<string | null>(null);
-  const [brineBusy, setBrineBusy] = useState(false);
+
+  // Equilibrium / dry brine
+  const [totalMassG, setTotalMassG] = useState("500");
+  const [eqPct, setEqPct] = useState(2);
+  const [eqResult, setEqResult] = useState<string | null>(null);
+  const [eqError, setEqError] = useState<string | null>(null);
 
   // Scale
   const [origServings, setOrigServings] = useState("4");
-  const [targetServings, setTargetServings] = useState("2");
+  const [targetServings, setTargetServings] = useState(2);
   const [scaleRows, setScaleRows] = useState<ScaleRow[]>([
     { name: "flour", amount: "240", unit: "g" },
     { name: "water", amount: "180", unit: "g" },
@@ -55,15 +61,13 @@ export default function CalculatorsPage() {
   ]);
   const [scaleResult, setScaleResult] = useState<string | null>(null);
   const [scaleError, setScaleError] = useState<string | null>(null);
-  const [scaleBusy, setScaleBusy] = useState(false);
 
-  // Baker's %
+  // Baker's % (live hydration via water slider)
   const [flourG, setFlourG] = useState("500");
-  const [waterBakeG, setWaterBakeG] = useState("375");
+  const [waterBakeG, setWaterBakeG] = useState(375);
   const [saltBakeG, setSaltBakeG] = useState("10");
   const [bakersResult, setBakersResult] = useState<string | null>(null);
   const [bakersError, setBakersError] = useState<string | null>(null);
-  const [bakersBusy, setBakersBusy] = useState(false);
 
   // Volume → grams
   const [volAmount, setVolAmount] = useState("1");
@@ -73,89 +77,148 @@ export default function CalculatorsPage() {
   const [volError, setVolError] = useState<string | null>(null);
   const [volBusy, setVolBusy] = useState(false);
 
-  async function onBrine(e: FormEvent) {
-    e.preventDefault();
-    setBrineBusy(true);
-    setBrineError(null);
-    setBrineResult(null);
-    try {
-      const r = await calcBrine({
-        water_g: Number(waterG),
-        brine_percent: Number(brinePct),
-        salt_type: saltType,
-      });
-      setBrineResult(
-        `${r.salt_g} g salt (${r.salt_tbsp} tbsp ${r.salt_type.replace(/_/g, " ")})`,
-      );
-    } catch (err) {
-      setBrineError(err instanceof Error ? err.message : "Brine failed");
-    } finally {
-      setBrineBusy(false);
+  useEffect(() => {
+    const w = Number(waterG);
+    if (!Number.isFinite(w) || w <= 0) {
+      setBrineResult(null);
+      return;
     }
-  }
+    let cancelled = false;
+    calcBrine({
+      water_g: w,
+      brine_percent: brinePct,
+      salt_type: saltType,
+    })
+      .then((r) => {
+        if (cancelled) return;
+        setBrineError(null);
+        setBrineResult(
+          `${r.salt_g} g salt (${r.salt_tbsp} tbsp ${r.salt_type.replace(/_/g, " ")})`,
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setBrineResult(null);
+          setBrineError(err instanceof Error ? err.message : "Brine failed");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [waterG, brinePct, saltType]);
 
-  async function onScale(e: FormEvent) {
-    e.preventDefault();
-    setScaleBusy(true);
-    setScaleError(null);
-    setScaleResult(null);
-    try {
-      const ingredients = scaleRows
-        .filter((r) => r.name.trim() && r.amount.trim())
-        .map((r) => ({
-          name: r.name.trim(),
-          amount: Number(r.amount),
-          unit: r.unit.trim() || "g",
-        }));
-      if (ingredients.length === 0) {
-        setScaleError("Add at least one ingredient.");
-        return;
-      }
-      const rows = await calcScale({
-        ingredients,
-        original_servings: Number(origServings),
-        target_servings: Number(targetServings),
-      });
-      setScaleResult(
-        rows
-          .map(
-            (r) =>
-              `${r.name}: ${r.amount} ${r.unit}` +
-              (r.note ? ` (${r.note})` : ""),
-          )
-          .join("\n"),
-      );
-    } catch (err) {
-      setScaleError(err instanceof Error ? err.message : "Scale failed");
-    } finally {
-      setScaleBusy(false);
+  useEffect(() => {
+    const m = Number(totalMassG);
+    if (!Number.isFinite(m) || m <= 0) {
+      setEqResult(null);
+      return;
     }
-  }
+    let cancelled = false;
+    calcEquilibriumSalt({
+      total_mass_g: m,
+      target_percent: eqPct,
+      salt_type: saltType,
+    })
+      .then((r) => {
+        if (cancelled) return;
+        setEqError(null);
+        setEqResult(
+          `${r.salt_g} g salt (${r.salt_tbsp} tbsp) at ${r.target_percent}% of total mass`,
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setEqResult(null);
+          setEqError(
+            err instanceof Error ? err.message : "Equilibrium calc failed",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [totalMassG, eqPct, saltType]);
 
-  async function onBakers(e: FormEvent) {
-    e.preventDefault();
-    setBakersBusy(true);
-    setBakersError(null);
-    setBakersResult(null);
-    try {
-      const r = await calcBakersPercentages({
-        ingredients_g: {
-          "bread flour": Number(flourG),
-          water: Number(waterBakeG),
-          salt: Number(saltBakeG),
-        },
-      });
-      const lines = Object.entries(r.percentages).map(
-        ([name, pct]) => `${name}: ${pct}%`,
-      );
-      lines.push(`Hydration: ${r.hydration_percent}%`);
-      setBakersResult(lines.join("\n"));
-    } catch (err) {
-      setBakersError(err instanceof Error ? err.message : "Baker’s % failed");
-    } finally {
-      setBakersBusy(false);
+  useEffect(() => {
+    const ingredients = scaleRows
+      .filter((r) => r.name.trim() && r.amount.trim())
+      .map((r) => ({
+        name: r.name.trim(),
+        amount: Number(r.amount),
+        unit: r.unit.trim() || "g",
+      }));
+    if (ingredients.length === 0) {
+      setScaleResult(null);
+      return;
     }
-  }
+    const orig = Number(origServings);
+    if (!Number.isFinite(orig) || orig <= 0) return;
+    let cancelled = false;
+    calcScale({
+      ingredients,
+      original_servings: orig,
+      target_servings: targetServings,
+    })
+      .then((rows) => {
+        if (cancelled) return;
+        setScaleError(null);
+        setScaleResult(
+          rows
+            .map(
+              (r) =>
+                `${r.name}: ${r.amount} ${r.unit}` +
+                (r.note ? ` (${r.note})` : ""),
+            )
+            .join("\n"),
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setScaleResult(null);
+          setScaleError(err instanceof Error ? err.message : "Scale failed");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scaleRows, origServings, targetServings]);
+
+  useEffect(() => {
+    const flour = Number(flourG);
+    const salt = Number(saltBakeG);
+    if (!Number.isFinite(flour) || flour <= 0) {
+      setBakersResult(null);
+      return;
+    }
+    let cancelled = false;
+    calcBakersPercentages({
+      ingredients_g: {
+        "bread flour": flour,
+        water: waterBakeG,
+        salt: Number.isFinite(salt) ? salt : 0,
+      },
+    })
+      .then((r) => {
+        if (cancelled) return;
+        setBakersError(null);
+        const lines = Object.entries(r.percentages).map(
+          ([name, pct]) => `${name}: ${pct}%`,
+        );
+        lines.push(`Hydration: ${r.hydration_percent}%`);
+        setBakersResult(lines.join("\n"));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setBakersResult(null);
+          setBakersError(
+            err instanceof Error ? err.message : "Baker’s % failed",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [flourG, waterBakeG, saltBakeG]);
 
   async function onVolume(e: FormEvent) {
     e.preventDefault();
@@ -176,16 +239,21 @@ export default function CalculatorsPage() {
     }
   }
 
+  const flourNum = Number(flourG) || 500;
+  const hydrationApprox =
+    flourNum > 0 ? Math.round((waterBakeG / flourNum) * 1000) / 10 : 0;
+
   return (
     <main className="shell calc-page">
       <header className="page-header">
         <h1>Calculators</h1>
         <p className="lede">
           Punch in numbers, get exact amounts. This is the kitchen scale on the
-          wall — not a chatbot guessing.
+          wall — not a chatbot guessing. Drag the sliders for live what-ifs.
         </p>
         <nav className="lab-jump" aria-label="Calculator sections">
           <a href="#brine">Brine</a>
+          <a href="#equilibrium">Dry salt</a>
           <a href="#scale">Scale</a>
           <a href="#bakers">Baker’s %</a>
           <a href="#volume">Volume → g</a>
@@ -215,13 +283,12 @@ export default function CalculatorsPage() {
       </header>
 
       <section id="brine" className="lab-section panel">
-        <h2>Brine</h2>
+        <h2>Brine (what-if)</h2>
         <p className="field-hint">
-          <strong>When:</strong> You’re wet-brining chicken, turkey, or pork and
-          need “how much salt for this much water.” Typical dinner brines are
-          often around 5–8%. (1 L water ≈ 1000 g.)
+          <strong>When:</strong> You’re wet-brining chicken, turkey, or pork.
+          Drag brine % — salt grams update from Python, instantly.
         </p>
-        <form className="stack-form" onSubmit={onBrine}>
+        <div className="stack-form">
           <label>
             Water (grams)
             <input
@@ -230,19 +297,17 @@ export default function CalculatorsPage() {
               step="any"
               value={waterG}
               onChange={(e) => setWaterG(e.target.value)}
-              required
             />
           </label>
-          <label>
-            Brine %
+          <label className="what-if-label">
+            Brine %: <strong>{brinePct}</strong>
             <input
-              type="number"
-              min={0.1}
-              max={26}
-              step="any"
+              type="range"
+              min={1}
+              max={12}
+              step={0.5}
               value={brinePct}
-              onChange={(e) => setBrinePct(e.target.value)}
-              required
+              onChange={(e) => setBrinePct(Number(e.target.value))}
             />
           </label>
           <label>
@@ -260,20 +325,52 @@ export default function CalculatorsPage() {
           </label>
           {brineError && <p className="error">{brineError}</p>}
           {brineResult && <p className="calc-result">{brineResult}</p>}
-          <button type="submit" disabled={brineBusy}>
-            {brineBusy ? "Calculating…" : "Calculate salt"}
-          </button>
-        </form>
+          <p className="muted trust-calc-note">
+            Deterministic calculator · not an LLM estimate
+          </p>
+        </div>
+      </section>
+
+      <section id="equilibrium" className="lab-section panel">
+        <h2>Dry / equilibrium salt</h2>
+        <p className="field-hint">
+          Salt as a percent of <em>total meat mass</em> (typical ~2%). Different
+          math from a wet brine — used for dry-brining.
+        </p>
+        <div className="stack-form">
+          <label>
+            Meat mass (g)
+            <input
+              type="number"
+              min={1}
+              step="any"
+              value={totalMassG}
+              onChange={(e) => setTotalMassG(e.target.value)}
+            />
+          </label>
+          <label className="what-if-label">
+            Target %: <strong>{eqPct}</strong>
+            <input
+              type="range"
+              min={0.5}
+              max={3}
+              step={0.1}
+              value={eqPct}
+              onChange={(e) => setEqPct(Number(e.target.value))}
+            />
+          </label>
+          {eqError && <p className="error">{eqError}</p>}
+          {eqResult && <p className="calc-result">{eqResult}</p>}
+        </div>
       </section>
 
       <section id="scale" className="lab-section panel">
         <h2>Scale a recipe</h2>
         <p className="field-hint">
-          <strong>When:</strong> The recipe feeds 4 and you’re cooking for 2 (or
-          a crowd). Amounts scale linearly; cook time and pan size often don’t —
-          we’ll flag salt/leavening when the jump is big.
+          Drag target servings — amounts rescale live. Cook time and pan size
+          often don’t scale the same way.
         </p>
-        <form className="stack-form" onSubmit={onScale}>
+        <div className="stack-form">
           <div className="calc-row-2">
             <label>
               Original servings
@@ -282,17 +379,17 @@ export default function CalculatorsPage() {
                 min={1}
                 value={origServings}
                 onChange={(e) => setOrigServings(e.target.value)}
-                required
               />
             </label>
-            <label>
-              Target servings
+            <label className="what-if-label">
+              Target: <strong>{targetServings}</strong>
               <input
-                type="number"
+                type="range"
                 min={1}
+                max={16}
+                step={1}
                 value={targetServings}
-                onChange={(e) => setTargetServings(e.target.value)}
-                required
+                onChange={(e) => setTargetServings(Number(e.target.value))}
               />
             </label>
           </div>
@@ -355,20 +452,15 @@ export default function CalculatorsPage() {
           {scaleResult && (
             <pre className="calc-result pre">{scaleResult}</pre>
           )}
-          <button type="submit" disabled={scaleBusy}>
-            {scaleBusy ? "Calculating…" : "Scale recipe"}
-          </button>
-        </form>
+        </div>
       </section>
 
       <section id="bakers" className="lab-section panel">
         <h2>Baker’s percentages</h2>
         <p className="field-hint">
-          <strong>When:</strong> You’re comparing bread/pizza doughs or
-          following a formula written as “flour 100%, water 70%…”. Enter your
-          gram weights; we translate to baker’s % and hydration.
+          Drag water to explore hydration. Flour stays the 100% baseline.
         </p>
-        <form className="stack-form" onSubmit={onBakers}>
+        <div className="stack-form">
           <label>
             Bread flour (g)
             <input
@@ -377,18 +469,18 @@ export default function CalculatorsPage() {
               step="any"
               value={flourG}
               onChange={(e) => setFlourG(e.target.value)}
-              required
             />
           </label>
-          <label>
-            Water (g)
+          <label className="what-if-label">
+            Water (g): <strong>{waterBakeG}</strong>
+            <span className="muted"> · ~{hydrationApprox}% hydration</span>
             <input
-              type="number"
-              min={0}
-              step="any"
+              type="range"
+              min={Math.round(flourNum * 0.5)}
+              max={Math.round(flourNum * 1.0)}
+              step={5}
               value={waterBakeG}
-              onChange={(e) => setWaterBakeG(e.target.value)}
-              required
+              onChange={(e) => setWaterBakeG(Number(e.target.value))}
             />
           </label>
           <label>
@@ -399,25 +491,20 @@ export default function CalculatorsPage() {
               step="any"
               value={saltBakeG}
               onChange={(e) => setSaltBakeG(e.target.value)}
-              required
             />
           </label>
           {bakersError && <p className="error">{bakersError}</p>}
           {bakersResult && (
             <pre className="calc-result pre">{bakersResult}</pre>
           )}
-          <button type="submit" disabled={bakersBusy}>
-            {bakersBusy ? "Calculating…" : "Calculate percentages"}
-          </button>
-        </form>
+        </div>
       </section>
 
       <section id="volume" className="lab-section panel">
         <h2>Volume → grams</h2>
         <p className="field-hint">
           <strong>When:</strong> A recipe says “1 cup flour” but you want to
-          weigh it. Densities differ by ingredient — still approximate (scooping
-          style matters).
+          weigh it. Densities differ by ingredient — still approximate.
         </p>
         <form className="stack-form" onSubmit={onVolume}>
           <div className="calc-row-2">

@@ -24,7 +24,7 @@ export default function AskPage() {
           "Type a question or tap an example below the box.",
           "Read Action (what to do), Reason (why), and Science (the idea behind it).",
           "Check Sources — claims point back to cited knowledge when available.",
-          "Sign in under My kitchen if you want answers tuned to your oven, diet, and gear.",
+          "Sign in under My kitchen to personalize answers and keep Ask history (reopen past chats from the sidebar).",
         ]}
         terms={[
           {

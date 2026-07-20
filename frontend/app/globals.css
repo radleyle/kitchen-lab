@@ -114,6 +114,23 @@ select {
   font: inherit;
 }
 
+/* No floating outline boxes on click / focus (Mac often shows these on every click). */
+*:focus,
+*:focus-visible {
+  outline: none;
+}
+
+button,
+a,
+summary,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
 ::selection {
   background: var(--highlight);
   color: var(--ink);
@@ -619,6 +636,104 @@ html[data-theme="dark"] .mode-pill {
   box-shadow: 0 6px 20px rgba(10, 69, 64, 0.22);
 }
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.15rem;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--danger) 32%, transparent);
+  transition:
+    filter 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+/* Confirm dialog — replaces the browser’s native confirm(). */
+.confirm-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(8, 16, 14, 0.48);
+  backdrop-filter: blur(7px);
+  animation: fade-in 0.16s var(--ease) both;
+}
+
+.confirm-dialog {
+  width: min(24rem, 100%);
+  padding: 1.35rem 1.35rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: rise-in 0.2s var(--ease) both;
+}
+
+.confirm-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--teal-deep);
+  margin: 0 0 0.45rem;
+}
+
+.confirm-message {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  font-size: 0.98rem;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.confirm-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition:
+    background 0.15s var(--ease),
+    border-color 0.15s var(--ease);
+}
+
+.confirm-cancel:hover {
+  background: var(--teal-soft);
+  border-color: color-mix(in srgb, var(--teal) 35%, var(--line));
+}
+
+.confirm-actions .btn-danger,
+.confirm-actions .btn {
+  min-width: 5.5rem;
+}
+
 .btn:active:not(:disabled),
 .ask-form button:active:not(:disabled),
 .stack-form button:not(.text-btn):active:not(:disabled) {
@@ -669,8 +784,9 @@ html[data-theme="dark"] .mode-pill {
   min-height: 5.75rem;
 }
 
+/* Soft field highlight for typing — never for radios/checks/sliders (those look like a “box”). */
 .ask-form textarea:focus,
-.stack-form input:focus,
+.stack-form input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="file"]):focus,
 .stack-form select:focus,
 .stack-form textarea:focus,
 .q-field textarea:focus,
@@ -683,6 +799,86 @@ html[data-theme="dark"] .mode-pill {
 .auth-hint {
   margin: 0 0 1rem;
   font-size: 0.95rem;
+}
+
+.ask-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.ask-history {
+  position: sticky;
+  top: 1rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.ask-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.ask-history-head h2 {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0;
+}
+
+.ask-history-empty {
+  font-size: 0.9rem;
+  margin: 0.35rem 0 0;
+}
+
+.ask-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: min(70vh, 36rem);
+  overflow-y: auto;
+}
+
+.ask-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ask-history-item .tech-btn {
+  padding: 0.65rem 0.75rem;
+}
+
+.ask-history-delete {
+  align-self: flex-end;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 800px) {
+  .ask-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ask-history {
+    position: static;
+    max-height: none;
+  }
+
+  .ask-history-list {
+    max-height: 12rem;
+  }
 }
 
 .auth-hint a {
@@ -921,6 +1117,241 @@ html[data-theme="dark"] .mode-pill {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
+.trust-strip {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.trust-badge {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.trust-badge--safety {
+  color: var(--danger);
+  background: rgba(155, 61, 61, 0.08);
+  border-color: rgba(155, 61, 61, 0.25);
+}
+
+.trust-badge--cite {
+  color: var(--teal-deep);
+  background: var(--highlight);
+}
+
+.trust-badge--calc {
+  color: var(--ink);
+  background: rgba(15, 107, 99, 0.08);
+  border-color: rgba(15, 107, 99, 0.3);
+}
+
+.trust-badge--personal {
+  color: var(--teal-deep);
+  border-color: rgba(15, 107, 99, 0.45);
+  background: transparent;
+}
+
+.trust-badge--grounded {
+  color: var(--ink-muted);
+  border-color: var(--mist);
+  background: var(--surface-solid);
+}
+
+.safety-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.85rem 0;
+}
+
+.safety-fact {
+  border-left: 3px solid var(--teal);
+  padding: 0.55rem 0.85rem;
+  background: rgba(15, 107, 99, 0.06);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.safety-fact h4 {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 0.35rem;
+}
+
+.safety-fact p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.what-if {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid var(--mist);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+}
+
+.what-if > h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem;
+  color: var(--teal-deep);
+}
+
+.what-if-block {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mist);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.what-if-block:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.what-if-block h4 {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0;
+}
+
+.what-if-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 550;
+}
+
+.what-if-label input[type="range"] {
+  width: 100%;
+  accent-color: var(--teal);
+}
+
+.what-if-result {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+}
+
+.trust-calc-note {
+  font-size: 0.8rem;
+}
+
+.diet-conflicts {
+  margin-top: 0.75rem;
+}
+
+.diet-conflicts h4 {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+  margin: 0 0 0.35rem;
+}
+
+.ab-preview,
+.ab-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.ab-column,
+.trial-card {
+  border: 1px solid var(--mist);
+  border-radius: var(--radius);
+  padding: 0.85rem 0.95rem;
+  background: var(--surface-solid);
+  min-width: 0;
+}
+
+.ab-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 0.25rem;
+}
+
+.ab-variable {
+  font-weight: 650;
+  margin: 0 0 0.5rem;
+}
+
+.trial-card h5 {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin: 0.65rem 0 0.3rem;
+}
+
+.mech-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+}
+
+.mech-tech-links {
+  margin: 0.35rem 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.diagnose-hero .verdict-cause {
+  margin-bottom: 0.35rem;
+}
+
+.diagnose-next {
+  margin: 0.85rem 0 0;
+}
+
+.diagnose-exp-link {
+  font-weight: 650;
+}
+
+.evidence-list {
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .ab-preview,
+  .ab-board {
+    grid-template-columns: 1fr;
+  }
+}
+
 .step-action {
   font-weight: 650;
   margin: 0 0 0.25rem;
@@ -1022,6 +1453,45 @@ html[data-theme="dark"] .mode-pill {
   font-weight: 400;
 }
 
+.authenticity-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.authenticity-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: start;
+  font-weight: 400;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.authenticity-option:has(input:checked) {
+  /* Selected = soft fill only (no extra outline box) */
+  background: var(--teal-soft);
+}
+
+.authenticity-option strong {
+  display: block;
+  color: var(--teal-deep);
+  margin-bottom: 0.1rem;
+}
+
+.authenticity-option .field-hint {
+  margin: 0;
+}
+
+.authenticity-option input {
+  margin-top: 0.2rem;
+}
+
 .signed-in {
   margin: 0 0 1.25rem;
 }
@@ -1061,15 +1531,15 @@ html[data-theme="dark"] .mode-pill {
     transform 0.2s var(--ease);
 }
 
-.tech-btn:hover:not(:disabled),
-.tech-btn.active {
+.tech-btn:hover:not(:disabled) {
   background: var(--surface);
-  border-color: var(--line);
 }
 
 .tech-btn.active {
-  border-color: rgba(15, 107, 99, 0.3);
-  box-shadow: var(--shadow);
+  /* Selected fill — avoid a teal outline that looks like a focus ring */
+  background: var(--teal-soft);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .tech-detail,
@@ -1349,6 +1819,53 @@ html[data-theme="dark"] .mode-pill {
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
+}
+
+.recipe-cover {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: var(--paper-2);
+}
+
+.recipe-cover img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-cover-credit {
+  margin: 0;
+  padding: 0.45rem 0.75rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  background: var(--surface-solid);
+}
+
+.recipe-cover-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.recipe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.recipe-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.recipe-card-delete {
+  align-self: flex-start;
+  padding: 0.15rem 0.1rem;
 }
 
 .recipe-view-head .recipe-title {
@@ -1687,68 +2204,6 @@ html[data-theme="dark"] .home-band--soft {
   margin: 0 0 1.5rem;
   color: var(--ink-muted);
   max-width: 32rem;
-}
-
-.page-banner {
-  position: relative;
-  min-height: clamp(14rem, 32vw, 20rem);
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.page-banner-media {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.page-banner-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(6, 28, 24, 0.2) 0%,
-    rgba(6, 28, 24, 0.78) 100%
-  );
-}
-
-.page-banner-content {
-  position: relative;
-  z-index: 1;
-  padding-top: 4rem;
-  padding-bottom: 2rem;
-}
-
-/* Same column as page body — width 100% so flex banner doesn’t shrink-wrap left. */
-.page-banner-content.shell {
-  width: 100%;
-  max-width: var(--shell);
-  margin-inline: auto;
-  padding: 4rem var(--shell-pad) 2rem;
-  box-sizing: border-box;
-}
-
-@media (min-width: 640px) {
-  .page-banner-content.shell {
-    padding: 4.25rem var(--shell-pad) 2.25rem;
-  }
-}
-
-.page-banner-content h1 {
-  font-family: var(--font-display);
-  font-size: clamp(2.2rem, 6vw, 3.2rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: #f7faf8;
-  margin: 0 0 0.45rem;
-}
-
-.page-banner-content .lede {
-  color: rgba(244, 250, 247, 0.9);
 }
 
 .prompt-mosaic {

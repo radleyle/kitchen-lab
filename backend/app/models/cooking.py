@@ -19,6 +19,10 @@ class Recipe(Base):
     description: Mapped[str | None] = mapped_column(Text)
     servings: Mapped[int | None] = mapped_column()
     source_url: Mapped[str | None] = mapped_column(String(500))  # for adapted recipes
+    # Cover photo from Unsplash (or null → frontend uses local stock fallback).
+    image_url: Mapped[str | None] = mapped_column(String(1000))
+    image_credit: Mapped[str | None] = mapped_column(String(200))
+    image_credit_url: Mapped[str | None] = mapped_column(String(500))
     # [{"ingredient": "chicken breast", "grams": 450, "note": "sliced thin"}]
     ingredients: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
@@ -26,7 +30,9 @@ class Recipe(Base):
     )
 
     steps: Mapped[list["RecipeStep"]] = relationship(
-        back_populates="recipe", order_by="RecipeStep.position"
+        back_populates="recipe",
+        order_by="RecipeStep.position",
+        cascade="all, delete-orphan",
     )
 
 
@@ -79,15 +85,24 @@ class SymptomCause(Base):
 
 
 class AssistantConversation(Base):
-    """A chat with the agent, kept so users (and the agent) can look back."""
+    """A chat with the agent, kept so users can look back (Ask history).
+
+    messages JSON shape (append-only turns):
+      [{"id", "question", "response", "diagnose_slug", "error", "ts"}, ...]
+    response holds the full agent envelope so the UI can replay ResultView.
+    """
 
     __tablename__ = "assistant_conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    mode: Mapped[str] = mapped_column(String(20))  # learn/cook/adapt/diagnose/substitute
-    # Full message history: [{"role": "user", "content": "..."}, ...]
+    mode: Mapped[str] = mapped_column(String(20))  # last turn mode
+    title: Mapped[str | None] = mapped_column(String(200))
+    # [{"id", "question", "response", "diagnose_slug", "error", "ts"}, ...]
     messages: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

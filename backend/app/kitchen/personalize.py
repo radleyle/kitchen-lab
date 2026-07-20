@@ -241,6 +241,39 @@ def kitchen_prompt_block(snapshot: dict | None) -> str:
     if prefs.get("preferred_doneness"):
         lines.append(f"- Preferred doneness: {prefs['preferred_doneness']}")
 
+    # Home-cuisine authenticity (works for any cuisine the cook selects).
+    home_cuisines = [
+        str(c).strip()
+        for c in (prefs.get("home_cuisines") or [])
+        if str(c).strip()
+    ]
+    authenticity = str(prefs.get("authenticity_mode") or "flexible").lower()
+    if home_cuisines:
+        cuisine_list = ", ".join(home_cuisines)
+        lines.append(f"- Home cuisines (cook's taste-of-home): {cuisine_list}")
+        if authenticity == "home":
+            lines.append(
+                "- Authenticity mode: HOME / TRADITIONAL. When a request "
+                "matches these cuisines, prefer homeland / regional home-kitchen "
+                "practice (ingredient names, techniques, pantry assumptions) — "
+                "NOT watered-down restaurant-abroad or supermarket-kit versions. "
+                "Avoid diaspora shortcuts unless the cook asks for them. If you "
+                "are unsure what is traditional, say so in the description "
+                "rather than inventing 'authentic' claims."
+            )
+        elif authenticity == "adapted":
+            lines.append(
+                "- Authenticity mode: ADAPTED. When a request matches these "
+                "cuisines, keep the spirit of the dish but allow practical "
+                "substitutions for a non-homeland pantry / weeknight cooking. "
+                "Label notable shortcuts in the description."
+            )
+        else:
+            lines.append(
+                "- Authenticity mode: FLEXIBLE. No strong homeland vs adapted "
+                "preference; still respect named home cuisines when relevant."
+            )
+
     equipment = snapshot.get("equipment") or []
     if equipment:
         lines.append("- Equipment available:")

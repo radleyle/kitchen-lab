@@ -72,6 +72,29 @@ export type AgentResponse = {
   personalized?: boolean;
   entities?: Record<string, string | null>;
   result: Record<string, unknown>;
+  /** Present when signed-in ask was persisted to history. */
+  conversation_id?: number;
+};
+
+export type ConversationSummary = {
+  id: number;
+  title: string | null;
+  mode: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConversationTurn = {
+  id: string;
+  question: string;
+  response?: AgentResponse | null;
+  diagnose_slug?: string | null;
+  error?: string | null;
+  ts?: string;
+};
+
+export type ConversationDetail = ConversationSummary & {
+  messages: ConversationTurn[];
 };
 
 export type KitchenProfile = {
@@ -184,12 +207,66 @@ export async function deleteEquipment(id: number): Promise<void> {
   if (!res.ok) throw new Error(await readError(res));
 }
 
-export async function askAgent(message: string): Promise<AgentResponse> {
-  // Send the token when present so cook/adapt/substitute can personalize.
+export async function askAgent(
+  message: string,
+  conversationId?: number | null,
+): Promise<AgentResponse> {
+  // Send the token when present so cook/adapt/substitute can personalize
+  // and Ask history can persist the turn.
+  const body: { message: string; conversation_id?: number } = { message };
+  if (conversationId != null) body.conversation_id = conversationId;
   const res = await apiFetch(
     "/agent/ask",
-    { method: "POST", body: JSON.stringify({ message }) },
+    { method: "POST", body: JSON.stringify(body) },
     true,
+  );
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function listConversations(): Promise<ConversationSummary[]> {
+  const res = await apiFetch("/agent/conversations", {}, true);
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function getConversation(
+  id: number,
+): Promise<ConversationDetail> {
+  const res = await apiFetch(`/agent/conversations/${id}`, {}, true);
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function syncConversationMessages(
+  id: number,
+  messages: ConversationTurn[],
+): Promise<ConversationDetail> {
+  const res = await apiFetch(
+    `/agent/conversations/${id}`,
+    { method: "PUT", body: JSON.stringify({ messages }) },
+    true,
+  );
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function deleteConversation(id: number): Promise<void> {
+  const res = await apiFetch(
+    `/agent/conversations/${id}`,
+    { method: "DELETE" },
+    true,
+  );
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+export async function startDiagnosis(body: {
+  description: string;
+}): Promise<Record<string, unknown>> {
+  const res = await apiFetch(
+    "/diagnose/start",
+    { method: "POST", body: JSON.stringify(body) },
+    false,
   );
   if (!res.ok) throw new Error(await readError(res));
   return res.json();
@@ -209,6 +286,31 @@ export async function concludeDiagnosis(body: {
   return res.json();
 }
 
+export type Citation = {
+  claim?: string;
+  confidence?: string;
+  scope?: string;
+  source?: {
+    title?: string;
+    author?: string;
+    url?: string;
+    authority_level?: string;
+  };
+};
+
+export type SafetyFact = {
+  food: string;
+  min_internal_temp_c: number | null;
+  min_internal_temp_f: number | null;
+  rest_time_min: number | null;
+  source?: {
+    title?: string;
+    url?: string;
+    authority_level?: string;
+    reviewed_at?: string;
+  };
+};
+
 export type TechniqueSummary = {
   id: number;
   slug: string;
@@ -225,6 +327,16 @@ export type TechniqueDetail = TechniqueSummary & {
     name: string;
     explanation: string;
   } | null;
+};
+
+export type MechanismSummary = {
+  slug: string;
+  name: string;
+  explanation: string;
+};
+
+export type MechanismDetail = MechanismSummary & {
+  techniques: TechniqueSummary[];
 };
 
 export type NotebookEntry = {
@@ -244,6 +356,18 @@ export async function listTechniques(): Promise<TechniqueSummary[]> {
 
 export async function getTechnique(slug: string): Promise<TechniqueDetail> {
   const res = await apiFetch(`/techniques/${encodeURIComponent(slug)}`);
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function listMechanisms(): Promise<MechanismSummary[]> {
+  const res = await apiFetch("/mechanisms");
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function getMechanism(slug: string): Promise<MechanismDetail> {
+  const res = await apiFetch(`/mechanisms/${encodeURIComponent(slug)}`);
   if (!res.ok) throw new Error(await readError(res));
   return res.json();
 }
@@ -427,6 +551,24 @@ export async function calcBrine(body: {
   return res.json();
 }
 
+export async function calcEquilibriumSalt(body: {
+  total_mass_g: number;
+  target_percent: number;
+  salt_type: string;
+}): Promise<{
+  salt_g: number;
+  salt_tbsp: number;
+  salt_type: string;
+  target_percent: number;
+}> {
+  const res = await apiFetch("/calculators/equilibrium-salt", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
 export async function calcScale(body: {
   ingredients: { name: string; amount: number; unit: string }[];
   original_servings: number;
@@ -477,23 +619,34 @@ export type RecipeStep = {
   visual_cues?: string | null;
   critical_temp_c?: number | null;
   target_internal_temp_c?: number | null;
-  citations?: unknown;
+  citations?: Citation[] | unknown;
 };
 
 export type GeneratedRecipe = {
   feasible: boolean;
-  recipe_id?: number;
+  recipe_id?: number | null;
+  saved?: boolean;
   title?: string;
   description?: string;
   servings?: number | null;
+  image_url?: string | null;
+  image_credit?: string | null;
+  image_credit_url?: string | null;
   ingredients?: {
     ingredient: string;
     grams?: number | null;
     amount?: string;
   }[];
   steps?: RecipeStep[];
+  safety?: SafetyFact | null;
   safety_overrides?: unknown[];
-  kitchen?: { notes?: string[]; dietary_conflicts?: unknown[] };
+  kitchen?: {
+    notes?: string[];
+    dietary_conflicts?: unknown[];
+    oven_adjustments?: unknown[];
+    boiling_point_c?: number | null;
+    applied?: boolean;
+  };
   grounding_note?: string;
   message?: string;
   personalized?: boolean;
@@ -504,6 +657,9 @@ export type RecipeSummary = {
   title: string;
   description: string | null;
   servings: number | null;
+  image_url?: string | null;
+  image_credit?: string | null;
+  image_credit_url?: string | null;
 };
 
 export async function generateRecipe(body: {
@@ -519,6 +675,37 @@ export async function generateRecipe(body: {
   return res.json();
 }
 
+export async function saveRecipe(body: {
+  title: string;
+  description?: string | null;
+  servings?: number | null;
+  ingredients?: GeneratedRecipe["ingredients"];
+  steps?: GeneratedRecipe["steps"];
+  image_url?: string | null;
+  image_credit?: string | null;
+  image_credit_url?: string | null;
+  source_url?: string | null;
+}): Promise<{
+  id: number;
+  title: string;
+  image_url?: string | null;
+  image_credit?: string | null;
+  image_credit_url?: string | null;
+}> {
+  const res = await apiFetch(
+    "/recipes/save",
+    { method: "POST", body: JSON.stringify(body) },
+    true,
+  );
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();
+}
+
+export async function deleteRecipe(id: number): Promise<void> {
+  const res = await apiFetch(`/recipes/${id}`, { method: "DELETE" }, true);
+  if (!res.ok) throw new Error(await readError(res));
+}
+
 export async function listMyRecipes(): Promise<RecipeSummary[]> {
   const res = await apiFetch("/recipes", {}, true);
   if (!res.ok) throw new Error(await readError(res));
@@ -529,5 +716,5 @@ export async function getRecipe(id: number): Promise<GeneratedRecipe> {
   const res = await apiFetch(`/recipes/${id}`);
   if (!res.ok) throw new Error(await readError(res));
   const data = await res.json();
-  return { feasible: true, ...data };
+  return { feasible: true, saved: true, ...data };
 }

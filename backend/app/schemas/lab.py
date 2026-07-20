@@ -13,6 +13,32 @@ class MechanismOut(BaseModel):
     explanation: str
 
 
+class MechanismSummary(BaseModel):
+    """Browse card for the mechanism library (no nested techniques)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    name: str
+    explanation: str
+
+
+class TechniqueSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    slug: str
+    name: str
+    summary: str
+    applicable_foods: list
+
+
+class MechanismDetail(MechanismSummary):
+    """One mechanism plus the techniques that teach it."""
+
+    techniques: list[TechniqueSummary] = []
+
+
 class TechniqueOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -24,16 +50,6 @@ class TechniqueOut(BaseModel):
     common_mistakes: list
     applicable_foods: list
     mechanism: MechanismOut | None = None
-
-
-class TechniqueSummary(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    slug: str
-    name: str
-    summary: str
-    applicable_foods: list
 
 
 class NotebookCreate(BaseModel):

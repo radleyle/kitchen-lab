@@ -25,6 +25,7 @@ from app.kitchen.personalize import kitchen_prompt_block, personalize_recipe
 from app.llm.client import complete_json
 from app.models import Recipe, RecipeStep
 from app.rag.retrieval import search_passages
+from app.recipes.images import fetch_recipe_image
 from app.safety.temps import find_temp_rule, rule_to_response
 
 STEPS_SHAPE = """\
@@ -95,6 +96,11 @@ Rules you must never break:
 4. Steps must be in executable order, each doing one thing, with visual
    cues wherever a home cook could use them.
 5. If the request is not actually a recipe request, set "feasible" to false.
+6. If KITCHEN CONTEXT includes home cuisines / authenticity mode, honor it
+   for matching dishes (Vietnamese, Korean, Japanese, Italian, Indian, etc.).
+   Prefer homeland home-kitchen practice when mode is HOME; allow labeled
+   shortcuts when mode is ADAPTED. Never invent cultural "facts" in why/science
+   fields — those still require EVIDENCE. Put style notes in description.
 
 {RECIPE_SHAPE}
 """
@@ -229,6 +235,7 @@ def _persist(
     data: dict,
     source_url: str | None = None,
     user_id: int | None = None,
+    image: dict[str, str] | None = None,
 ) -> int:
     recipe = Recipe(
         user_id=user_id,
@@ -236,6 +243,9 @@ def _persist(
         description=data.get("description"),
         servings=data.get("servings"),
         source_url=source_url,
+        image_url=(image or {}).get("url"),
+        image_credit=(image or {}).get("credit"),
+        image_credit_url=(image or {}).get("credit_url"),
         ingredients=data["ingredients"],
     )
     db.add(recipe)
@@ -248,7 +258,9 @@ def _persist(
                 instruction=step["instruction"],
                 why=step.get("why") or None,
                 science=step.get("science") or None,
-                critical_temp_c=step.get("target_internal_temp_c"),
+                critical_temp_c=step.get("target_internal_temp_c")
+                if step.get("target_internal_temp_c") is not None
+                else step.get("critical_temp_c"),
                 visual_cues=step.get("visual_cues") or None,
             )
         )
@@ -271,16 +283,23 @@ def _finalize(
     steps = result.get("steps", [])
     _attach_citations(steps, passages)
     enforcement = _enforce_safety_floor(db, safety_query, steps)
-    recipe_id = _persist(db, result, source_url, user_id=user_id)
+
+    # Deterministic photo lookup from the title — not LLM-invented imagery.
+    # Do NOT auto-save: the user opts in via POST /recipes/save (signed in).
+    image = fetch_recipe_image(str(result.get("title") or ""))
 
     out = {
         "feasible": True,
-        "recipe_id": recipe_id,
+        "recipe_id": None,
+        "saved": False,
         "title": result["title"],
         "description": result.get("description", ""),
         "servings": result.get("servings"),
         "ingredients": result.get("ingredients", []),
         "steps": steps,
+        "image_url": (image or {}).get("url"),
+        "image_credit": (image or {}).get("credit"),
+        "image_credit_url": (image or {}).get("credit_url"),
         "safety": enforcement["safety"],
         "safety_overrides": enforcement["overrides"],
         "grounding_note": (
@@ -290,6 +309,41 @@ def _finalize(
         ),
     }
     return personalize_recipe(out, kitchen_snapshot)
+
+
+def save_generated_recipe(
+    db: Session,
+    data: dict,
+    user_id: int,
+    source_url: str | None = None,
+) -> dict:
+    """Persist a previously generated recipe into the user's cookbook."""
+    image = None
+    if data.get("image_url"):
+        image = {
+            "url": data["image_url"],
+            "credit": data.get("image_credit") or "",
+            "credit_url": data.get("image_credit_url") or "",
+        }
+    else:
+        image = fetch_recipe_image(str(data.get("title") or ""))
+
+    recipe_id = _persist(
+        db,
+        data,
+        source_url=source_url or data.get("source_url"),
+        user_id=user_id,
+        image=image,
+    )
+    return {
+        "id": recipe_id,
+        "title": data["title"],
+        "description": data.get("description"),
+        "servings": data.get("servings"),
+        "image_url": (image or {}).get("url"),
+        "image_credit": (image or {}).get("credit"),
+        "image_credit_url": (image or {}).get("credit_url"),
+    }
 
 
 def generate_recipe(

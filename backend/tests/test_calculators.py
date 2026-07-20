@@ -82,6 +82,11 @@ def test_equilibrium_salt():
     assert equilibrium_salt(1500, 2.0) == 30.0
 
 
+def test_equilibrium_salt_rejects_high_percent():
+    with pytest.raises(ValueError):
+        equilibrium_salt(500, 6.0)
+
+
 def test_salt_brands_differ():
     # The same 30 g is ~2 tbsp table salt but ~3.6 tbsp Diamond kosher.
     table = salt_grams_to_tbsp(30, "table_salt")

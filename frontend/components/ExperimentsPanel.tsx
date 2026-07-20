@@ -12,6 +12,7 @@ import {
   type Experiment,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useConfirm } from "@/lib/confirm";
 import { AuthImage } from "./AuthImage";
 
 type PendingPhoto = {
@@ -23,6 +24,7 @@ type PendingPhoto = {
 
 export function ExperimentsPanel() {
   const { user, loading: authLoading } = useAuth();
+  const confirm = useConfirm();
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ExperimentsPanel() {
   const [pendingDeletes, setPendingDeletes] = useState<number[]>([]);
   const [saveBusy, setSaveBusy] = useState(false);
   const detailRef = useRef<HTMLElement | null>(null);
+  const designPrefillDone = useRef(false);
 
   const selected =
     selectedId == null
@@ -47,6 +50,17 @@ export function ExperimentsPanel() {
   const photosDirty =
     pendingPhotos.length > 0 || pendingDeletes.length > 0;
 
+  // Prefill from diagnose → Lab link (?design=…)
+  useEffect(() => {
+    if (designPrefillDone.current || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const design = params.get("design");
+    if (design) {
+      setPrompt(design);
+      designPrefillDone.current = true;
+    }
+  }, []);
+
   function clearPhotoDraft() {
     setPendingPhotos((prev) => {
       for (const p of prev) URL.revokeObjectURL(p.previewUrl);
@@ -55,11 +69,16 @@ export function ExperimentsPanel() {
     setPendingDeletes([]);
   }
 
-  function confirmDiscardIfDirty(): boolean {
+  async function confirmDiscardIfDirty(): Promise<boolean> {
     if (!photosDirty) return true;
-    return window.confirm(
-      "You have unsaved photo changes. Leave without saving?",
-    );
+    return confirm({
+      title: "Discard photo changes?",
+      message:
+        "You have unsaved photo changes. Leave without saving?",
+      confirmLabel: "Discard",
+      cancelLabel: "Keep editing",
+      danger: true,
+    });
   }
 
   async function refresh(keepSelected = true) {
@@ -133,14 +152,14 @@ export function ExperimentsPanel() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [photosDirty]);
 
-  function selectExperiment(id: number) {
+  async function selectExperiment(id: number) {
     if (selectedId === id) {
-      if (!confirmDiscardIfDirty()) return;
+      if (!(await confirmDiscardIfDirty())) return;
       clearPhotoDraft();
       setSelectedId(null);
       return;
     }
-    if (selectedId != null && !confirmDiscardIfDirty()) return;
+    if (selectedId != null && !(await confirmDiscardIfDirty())) return;
     clearPhotoDraft();
     formSyncedFor.current = null;
     setSelectedId(id);
@@ -206,7 +225,7 @@ export function ExperimentsPanel() {
   async function onDesign(e: FormEvent) {
     e.preventDefault();
     if (!prompt.trim()) return;
-    if (!confirmDiscardIfDirty()) return;
+    if (!(await confirmDiscardIfDirty())) return;
     setDesignBusy(true);
     setError(null);
     try {
@@ -291,8 +310,9 @@ export function ExperimentsPanel() {
   return (
     <div className="experiments">
       <p className="field-hint">
-        Click an experiment to open it. Photo adds/removes stay as a draft until
-        you hit Save — closing with unsaved changes will warn you.
+        Fair kitchen science: change <em>one</em> variable, run A vs B, log what
+        you see. Click an experiment to open the side-by-side board. Photo
+        adds/removes stay as a draft until you hit Save.
       </p>
 
       <form className="stack-form" onSubmit={onDesign}>
@@ -307,7 +327,7 @@ export function ExperimentsPanel() {
           />
         </label>
         <button type="submit" disabled={designBusy || !prompt.trim()}>
-          {designBusy ? "Designing…" : "Design & save experiment"}
+          {designBusy ? "Designing…" : "Design A/B experiment"}
         </button>
       </form>
 
@@ -327,7 +347,7 @@ export function ExperimentsPanel() {
                   type="button"
                   className={open ? "tech-btn active" : "tech-btn"}
                   aria-expanded={open}
-                  onClick={() => selectExperiment(exp.id)}
+                  onClick={() => void selectExperiment(exp.id)}
                 >
                   <strong>{exp.question}</strong>
                   <span className="muted">
@@ -359,8 +379,14 @@ export function ExperimentsPanel() {
                       </p>
                     )}
 
-                    <h4>Trials</h4>
-                    <ul className="trial-list">
+                    <h4>A / B comparison</h4>
+                    <div
+                      className={
+                        selected.trials.length >= 2
+                          ? "ab-board"
+                          : "trial-list"
+                      }
+                    >
                       {selected.trials.map((t) => {
                         const saved = (t.attachments ?? []).filter(
                           (a) => !pendingDeletes.includes(a.id),
@@ -375,11 +401,11 @@ export function ExperimentsPanel() {
                           saved.length + marked.length + staged.length > 0;
 
                         return (
-                          <li key={t.id}>
-                            <strong>
-                              {t.label}: {t.variable_value}
-                            </strong>
+                          <div key={t.id} className="ab-column trial-card">
+                            <p className="ab-label">{t.label}</p>
+                            <p className="ab-variable">{t.variable_value}</p>
                             {t.notes && <p className="muted">{t.notes}</p>}
+                            <h5>Observations</h5>
                             {(t.observations?.length ?? 0) > 0 ? (
                               <ul>
                                 {t.observations.map((o) => (
@@ -416,6 +442,7 @@ export function ExperimentsPanel() {
                                 ))}
                                 {staged.map((p) => (
                                   <div key={p.localId} className="photo-thumb">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       className="trial-photo"
                                       src={p.previewUrl}
@@ -434,10 +461,10 @@ export function ExperimentsPanel() {
                                 ))}
                               </div>
                             )}
-                          </li>
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
 
                     {selected.status !== "done" && (
                       <>
@@ -553,12 +580,18 @@ export function ExperimentsPanel() {
                           className="text-btn"
                           disabled={!photosDirty || saveBusy}
                           onClick={() => {
-                            if (
-                              photosDirty &&
-                              window.confirm("Discard unsaved photo changes?")
-                            ) {
-                              clearPhotoDraft();
-                            }
+                            void (async () => {
+                              if (!photosDirty) return;
+                              const ok = await confirm({
+                                title: "Discard photo changes?",
+                                message:
+                                  "Throw away staged uploads and undo marks?",
+                                confirmLabel: "Discard",
+                                cancelLabel: "Keep editing",
+                                danger: true,
+                              });
+                              if (ok) clearPhotoDraft();
+                            })();
                           }}
                         >
                           Discard
