@@ -1044,7 +1044,7 @@ html[data-theme="dark"] .mode-pill {
 
 .lab-section > h2 {
   font-size: 0.85rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 1rem;
 }
 
 .layers section p,
@@ -1499,6 +1499,15 @@ html[data-theme="dark"] .mode-pill {
 .lab-section {
   margin-bottom: 3rem;
   scroll-margin-top: 1.5rem;
+}
+
+/* Keep section rhythm consistent: page guide → heading → local guide → content. */
+.shell > .guide + .lab-section {
+  margin-top: 2.5rem;
+}
+
+.lab-section > .guide {
+  margin: 0 0 1.5rem;
 }
 
 .tech-list,

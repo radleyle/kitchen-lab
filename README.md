@@ -4,6 +4,8 @@ Cook better through science. An AI cooking agent that **teaches**, **generates a
 
 **Trust split (the product idea):** the LLM phrases and personalizes. It never invents temperatures, gram conversions, or safety facts. Those come from code, USDA tables, and curated passages with claim-level citations.
 
+**Live demo:** [kitchen-lab-tau.vercel.app](https://kitchen-lab-tau.vercel.app/)
+
 ## Architecture
 
 | Piece    | Tech                   | Role                                      |
@@ -31,20 +33,20 @@ Cook better through science. An AI cooking agent that **teaches**, **generates a
 | CI | GitHub Actions | Runs tests/evals on push and PRs |
 | Photo storage | Local filesystem (`STORAGE_BACKEND=local`) | Same key shape as S3 |
 
-### Production (scaffolded under `infra/`)
+### Production (live)
 
-| Piece | AWS / service | Maps from local |
-| ----- | ------------- | --------------- |
-| App containers | **ECS Fargate** | `backend` / `frontend` Compose services |
-| Images | **ECR** | Local Docker images |
-| Database | **RDS** Postgres 16 | Compose `db` service |
-| Photos / uploads | **S3** (`STORAGE_BACKEND=s3`) | Local `media` volume |
-| Front door | **Application Load Balancer** | localhost ports |
-| IaC | **Terraform** | `docker-compose.yml` |
-| CI | GitHub Actions (tests) | `.github/workflows/ci.yml` |
-| CD | GitHub Actions → build/push ECR | `.github/workflows/deploy.yml` |
+| Piece | Service | Role |
+| ----- | ------- | ---- |
+| Frontend | **Vercel** | Builds and serves the Next.js application |
+| Backend | **Render** (Docker) | Runs FastAPI, migrations, calculators, and agent workflows |
+| Database | **Neon** Postgres + pgvector | Stores application data and vectors for semantic retrieval |
+| LLM / embeddings | **OpenAI API** | Phrases grounded answers and embeds curated passages |
+| Recipe photos | **Unsplash API** | Supplies relevant cover photos with attribution |
+| CI | **GitHub Actions** | Runs tests and deterministic evaluations |
 
-Step-by-step apply / destroy / cost notes: **[`infra/README.md`](infra/README.md)**. Nothing is created in your AWS account until you run `terraform apply` yourself.
+The repository also includes an AWS/Terraform reference architecture under
+`infra/`. It maps the same roles to ECS Fargate, RDS, S3, ECR, and an
+Application Load Balancer without creating those resources automatically.
 
 ## Agent modes
 
@@ -168,10 +170,11 @@ backend/
   Dockerfile.prod
 frontend/           # Next.js app (+ Dockerfile.prod)
 infra/terraform/    # AWS: VPC, ECR, RDS, S3, ALB, ECS
+render.yaml         # Live Render backend Blueprint
 docker-compose.yml
 ```
 
-## Deploy to AWS (overview)
+## AWS reference deployment (optional)
 
 Production images:
 
@@ -192,4 +195,3 @@ CD pushes images only; it does **not** auto-`terraform apply`, so CI cannot surp
 - **Citations are claim-level** — passages carry scope, confidence, and source metadata.
 - **Safety and arithmetic outrank the LLM** — internal temps, oven dial offsets, and volume→grams are enforced in Python after generation.
 - **Diagnosis scoring is pure math**; the LLM only maps free-text answers to supports / contradicts / neutral (with keyword hard rules for known failure modes).
-- Teaching notes for AI agents working in this repo: see [`AGENTS.md`](AGENTS.md).
