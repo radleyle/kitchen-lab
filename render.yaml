@@ -1,0 +1,22 @@
+# Render Blueprint: defines the backend service so "New -> Blueprint"
+# can create it without filling in the dashboard form.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: kitchenlab-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile.prod
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # paste the Neon connection string in the dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true # Render generates a long random value
+      - key: CORS_ORIGINS
+        value: http://localhost:3000 # replace with the Vercel URL after step 3
+      - key: STORAGE_BACKEND
+        value: local

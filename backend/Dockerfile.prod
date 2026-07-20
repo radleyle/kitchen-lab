@@ -12,11 +12,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN chown -R appuser:appuser /app
+RUN chmod +x scripts/start.sh && chown -R appuser:appuser /app
 
 USER appuser
 
+# Documentation only; PaaS platforms route to $PORT (start.sh reads it,
+# defaulting to 8000 so this image also works locally / on ECS).
 EXPOSE 8000
 
-# Migrations are a separate one-shot task in ECS (see infra/README.md).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# start.sh runs `alembic upgrade head` then uvicorn. On ECS, migrations
+# could instead be a separate one-shot task (see infra/README.md).
+CMD ["./scripts/start.sh"]

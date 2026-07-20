@@ -1,17 +1,54 @@
 """App settings, loaded from environment variables.
 
-Why environment variables? The same code runs on your Mac and on AWS.
+Why environment variables? The same code runs on your Mac and in the cloud.
 The *environment* supplies what differs (DB password, API keys), so
 secrets never live in the code or in git.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+# Hosts that don't need SSL: local dev and the Compose network.
+_LOCAL_DB_HOSTS = ("localhost", "127.0.0.1", "db")
+
+
+def normalize_database_url(url: str) -> str:
+    """Make pasted Postgres URLs (e.g. from Neon) work with SQLAlchemy.
+
+    Two fixes:
+    1. Driver: hosted dashboards hand out "postgresql://..." but SQLAlchemy
+       needs "postgresql+psycopg://..." to pick the psycopg 3 driver.
+    2. SSL: hosted Postgres (Neon, Supabase, ...) requires an encrypted
+       connection. If the host isn't local and no sslmode is set, we add
+       sslmode=require so the connection isn't rejected.
+    """
+    if url.startswith("postgres://"):
+        # Legacy Heroku-style scheme some dashboards still emit.
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+
+    if "sslmode=" not in url:
+        # Everything between "@" and the next "/" is host[:port].
+        try:
+            host_port = url.split("@", 1)[1].split("/", 1)[0]
+            host = host_port.rsplit(":", 1)[0]
+        except IndexError:
+            host = ""
+        if host and host not in _LOCAL_DB_HOSTS:
+            url += ("&" if "?" in url else "?") + "sslmode=require"
+    return url
 
 
 class Settings(BaseSettings):
     # pydantic-settings reads each field from an env var with the same name,
     # e.g. DATABASE_URL. The value below is only a fallback for local use.
     database_url: str = "postgresql+psycopg://kitchenlab:kitchenlab_dev@localhost:5432/kitchenlab"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        return normalize_database_url(v)
 
     app_name: str = "KitchenLab"
 
